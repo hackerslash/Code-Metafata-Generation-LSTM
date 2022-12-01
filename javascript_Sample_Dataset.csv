@@ -1,0 +1,2324 @@
+code,docstring,url,
+"function nextSeparator( str , runtime ) {
+	var i = runtime.i ,
+		eol = runtime.iEndOfLine ;
+
+	for ( ; i < eol ; i ++ ) {
+
+		switch ( str.charCodeAt( i ) ) {
+			case 0x20 :	//     space
+			case 0x28 :	// (   open parenthesis
+			case 0x29 :	// )   close parenthesis
+			case 0x2c :	// ,   comma
+			case 0x3a :	// :   colon
+			case 0x22 :	// ""   double-quote
+			case 0x24 :	// $   dollar
+			case 0x5b :	// [   open bracket
+			case 0x5d :	// ]   close bracket
+			case 0x7b :	// {   open curly brace
+			case 0x7d :	// }   close curly brace
+				return i ;
+		}
+	}
+
+	// return i/eol
+	return i ;
+}","Find the next separator: space, parens, comma, colon, double-quote, dollar, brackets",https://github.com/cronvel/kung-fig-expression/blob/b9aae3aa2e3a5fdfc13fb6c76794526764485c5b/lib/Expression.js#L639-L663,
+"function parseFnKeyConst( str_ , runtime ) {
+	var separatorIndex = nextSeparator( str_ , runtime ) ;
+
+	var str = str_.slice( runtime.i , separatorIndex ) ;
+	//console.log( 'str before:' , str_ ) ;
+	//console.log( 'str after:' , str ) ;
+
+	//var indexOf ;
+	//str = str.slice( runtime.i , runtime.iEndOfLine ) ;
+	//if ( ( indexOf = str.indexOf( ' ' ) ) !== -1 ) { str = str.slice( 0 , indexOf ) ; }
+
+	runtime.i += str.length ;
+
+	if (
+		str_[ separatorIndex ] === ':' ||
+		( str_[ separatorIndex ] === ' ' && afterSpacesChar( str_ , runtime , separatorIndex ) === ':' )
+	) {
+		// This is a key, return the unquoted string
+		return str ;
+	}
+	else if ( str in common.constants ) {
+		return common.constants[ str ] ;
+	}
+	else if ( fnOperators[ str ] ) {
+		return fnOperators[ str ] ;
+	}
+	else if ( str in expressionConstants ) {
+		return expressionConstants[ str ] ;
+	}
+	else if ( runtime.operators[ str ] ) {
+		return runtime.operators[ str ] ;
+	}
+	else if ( str in runtime.constants ) {
+		return runtime.constants[ str ] ;
+	}
+
+	throw new SyntaxError( ""Unexpected '"" + str + ""' in expression"" ) ;
+}","An identifier that is a function, a key or a constant",https://github.com/cronvel/kung-fig-expression/blob/b9aae3aa2e3a5fdfc13fb6c76794526764485c5b/lib/Expression.js#L668-L705,
+"function(name, defaults) {
+        _argValidator.checkString(name, 1, 'Invalid appName (arg #1)');
+        if (!_argValidator.checkObject(defaults)) {
+            defaults = {};
+        }
+
+        if (!_isInitialized) {
+            _config = _rc(name, defaults);
+            _isInitialized = true;
+        }
+
+        // Reference to the current module.
+        return module.exports;
+    }","Configures global configuration settings, include application name, and
+initial default values for the configuration. This method must be invoked
+before any calls to
+[getConfig()]{@link module:config.getConfig} in order to ensure that
+configuration objects are configured correctly.
+
+<p>
+Note that invoking this method multiple times could change the reference
+to the config object returned via a call to the
+[getConfig()]{@link module:config.getConfig} method.
+</p>
+
+@param {String} name The application name to use when loading up the
+configuration data. See
+[rc standards]{@link https://www.npmjs.com/package/rc#standards}
+for more information on the naming and placement of application
+configuration files.
+@param {Object} [defaults={}] The default configuration properties to
+initialize the config with.
+
+@return {module:config} A reference to the current module, allowing for
+chaining of method calls.",https://github.com/vamship/config/blob/4678290c4c272efcbc629c91031f867a85d92781/src/config.js#L96-L109,
+"function(scope) {
+        if (!_argValidator.checkString(scope)) {
+            scope = _applicationScope;
+        }
+
+        let config = _configCache[scope];
+        if (!config) {
+            const data = _deepDefaults(
+                _deepDefaults({}, _config[scope]),
+                _config.default
+            );
+            config = new AppConfig(data);
+            if (_isInitialized) {
+                _configCache[scope] = config;
+            }
+        }
+
+        return config;
+    }","Returns a configuration object that is scoped to a specific environment.
+This configuration object will return default application configuration
+properties, overridden by environment speicific values.
+
+@param {String} [scope=<default scope>] The name of the environment for
+which the application configuration object will be returned.  If
+omitted, this value will be defaulted to the environment
+set by invoking
+[setAppScope()]{@link module:config.setAppScope}. If this
+method was never invoked, the default scope is ""default"".
+
+@return {AppConfig} A configuration object that can be used to query for
+configuration parameters.",https://github.com/vamship/config/blob/4678290c4c272efcbc629c91031f867a85d92781/src/config.js#L155-L173,
+"function show(url) {
+  const location = get('location')
+  if (!location) {
+    console.warn(`Failed to show because there no location object`)
+    return
+  }
+  location.href = url
+}",show,https://github.com/the-labo/the-window/blob/6ae2a9c041dd56171d75ae3e86d78c65c8dd0173/lib/show.js#L12-L19,
+"function MultipartParser(request, fileFields, limits) {
+  Object.defineProperties(this, {
+
+    /**
+     * The HTTP request containing a multipart body.
+     *
+     * @property request
+     * @type Request
+     * @final
+     */
+    request: {value: request},
+
+    /**
+     * The list of file field descriptors.
+     *
+     * @property fileFields
+     * @type Array
+     * @final
+     */
+    fileFields: {value: fileFields || []},
+
+    /**
+     * Multipart limits configuration.
+     *
+     * @property limits
+     * @type Object
+     * @final
+     */
+    limits: {value: limits},
+
+    /**
+     * Final paths of files detected in multipart body.
+     *
+     * @property detectedFilesPaths
+     * @type Array
+     * @final
+     */
+    detectedFilesPaths: {value: []}
+
+  });
+
+  if (!this.request)
+    throw new TypeError('A MultipartParser needs a request');
+}","Defines a multipart parser to parse multipart requests.
+
+Use MultipartParser to get fields from multipart requests (including files).
+
+@example
+
+// Get multipart parser
+var MultipartParser = require('@openveo/api').multipart.MultipartParser;
+
+// Create a request parser expecting several files: files in photos ""field"" and a file in ""videos"" field
+var parser = new MultipartParser(request, [
+{
+name: 'photos',
+destinationPath: '/tmp/photos',
+maxCount: 2,
+unique: true
+},
+{
+name: 'videos',
+destinationPath: '/tmp/videos',
+maxCount: 1,
+unique: false
+}
+], {
+fieldNameSize: 100,
+fieldSize: 1024,
+fields: Infinity,
+fileSize: Infinity,
+files: Infinity,
+parts: Infinity,
+headerPairs: 2000
+});
+
+parser.parse(function(error) {
+if (error)
+console.log('Something went wrong when uploading');
+else
+console.log(request.files);
+});
+
+@class MultipartParser
+@constructor
+@param {Request} request HTTP Request containing a multipart body, it will be altered with parsing properties
+@param {Array} fileFields A list of file field descriptors with:
+- {String} name The field name which contains the file
+- {String} destinationPath The destination directory where the file will be uploaded
+- {Number} [maxCount] The maximum number of files allowed for this field
+- {Boolean} [unique] true to generate unique file names for files corresponding to this field, false to generate a
+unique id only if a file with the same name already exists in the destination folder
+@param {Object} [limits] Multipart limits configuration, for more information about
+available limits see Multer documentation (https://www.npmjs.com/package/multer#limits).
+@throws {TypeError} If request is not as expected",https://github.com/veo-labs/openveo-api/blob/493a811e9a5ba4d3e14910facaa7452caba1ab38/lib/multipart/MultipartParser.js#L67-L110,
+"function plain() {
+		var mw = core.base();
+
+		mw.plain = function (str) {
+			return String(str);
+		};
+		mw.error = function (str) {
+			return mw.plain(str);
+		};
+		mw.warning = function (str) {
+			return mw.plain(str);
+		};
+		mw.success = function (str) {
+			return mw.plain(str);
+		};
+		mw.accent = function (str) {
+			return mw.plain(str);
+		};
+		mw.muted = function (str) {
+			return mw.plain(str);
+		};
+		mw.toString = function () {
+			return '<ministyle-plain>';
+		};
+		return mw;
+	}",- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - plain text,https://github.com/Bartvds/ministyle/blob/92681e81d4c93faddd4e5d1d6edf44990b3a9e68/lib/common.js#L50-L75,
+"function dev() {
+		var mw = core.base();
+		mw.error = function (str) {
+			return '[error|' + str + ']';
+		};
+		mw.warning = function (str) {
+			return '[warng|' + str + ']';
+		};
+		mw.success = function (str) {
+			return '[succs|' + str + ']';
+		};
+		mw.accent = function (str) {
+			return '[accnt|' + str + ']';
+		};
+		mw.signal = function (str) {
+			return '[signl|' + str + ']';
+		};
+		mw.muted = function (str) {
+			return '[muted|' + str + ']';
+		};
+		mw.plain = function (str) {
+			return'[plain|' + str + ']';
+		};
+		mw.toString = function () {
+			return '<ministyle-dev>';
+		};
+		return mw;
+	}",TODO inline wrap method debug wrappers,https://github.com/Bartvds/ministyle/blob/92681e81d4c93faddd4e5d1d6edf44990b3a9e68/lib/common.js#L82-L109,
+"function empty() {
+		var mw = plain();
+
+		mw.plain = function (str) {
+			str = String(str);
+			var ret = '';
+			for (var i = 0; i < str.length; i++) {
+				ret += ' ';
+			}
+			return ret;
+		};
+		mw.toString = function () {
+			return '<ministyle-empty>';
+		};
+		return mw;
+	}",- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - return empty spaces,https://github.com/Bartvds/ministyle/blob/92681e81d4c93faddd4e5d1d6edf44990b3a9e68/lib/common.js#L114-L129,
+"function influxUdp(opts) {
+  BaseClient.apply(this, arguments);
+  opts = opts || {};
+  this.host = opts.host || '127.0.0.1';
+  this.port = opts.port || 4444;
+  this.socket = dgram.createSocket('udp4');
+}","A client that can send data to Influxdb backend via UDP
+@param {Object} opts options about the influxdb backend
+@param {String} opts.host the host of the influxdb. Default is 127.0.0.1
+@param {Number} opts.port the port of the UDP port of influxdb. Default is 4444.
+@param {Number} opts.sendQueueConcurrency specify the concurrency when send data to influxdb. Default is 10.",https://github.com/feedhenry/fh-component-metrics/blob/c97a1a82ff0144f2a7c2abecbc22084fade1cbc8/lib/clients/influxdb.js#L13-L19,
+"function(_url,_href){
+            if (!_url) return;
+            var _info = location.parse(_url);
+            this._$dispatchEvent('onbeforechange',_info);
+            var _umi = this.__doRewriteUMI(
+                _info.path,_href||_info.href
+            );
+            return this.__groups[this.__pbseed]._$hasUMI(_umi);
+        }",check event need delegated,https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/util/dispatcher/dispatcher.js#L538-L546,
+"function(_config){
+            if (!_config) return;
+            this.__config.r.push(_config);
+            // parse build-in rewrite rule
+            _u._$forEach(_buildin,
+                function(_key){
+                    if (!_config[_key]) return;
+                    this.__config.rr[_key] = _config[_key];
+                    delete _config[_key];
+                },this);
+        }",regist rewrite,https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/util/dispatcher/dispatcher.js#L721-L731,
+"function(_action,_name){
+            var _am = this.__config.am;
+            // parse event/handler from object
+            var _event = 'click',
+                _handler = _action,
+                _name = (_name||'').toLowerCase();
+            if (_u._$isObject(_action)){
+                _event = _action.event||_event;
+                _handler = _action.value;
+            }
+            // parse handler
+            if (_u._$isString(_handler)){
+                _handler = function(_umi,_options){
+                    this._$redirect(_umi,{
+                        force:!0,
+                        input:_options
+                    });
+                }._$bind(this,_handler);
+            }else if(_u._$isFunction(_handler)){
+                _handler = _handler._$aop(null,function(_event){
+                    var _result = _event.value;
+                    if (_u._$isString(_result)){
+                        this._$redirect(_result,{
+                            force:!0,
+                            input:_event.args[0]
+                        });
+                    }
+                }._$bind(this));
+            }
+            // push handler to cache
+            if (_u._$isFunction(_handler)){
+                // add event delegate
+                if (!_am[_event]) {
+                    this.__doInitDomEvent([[
+                        document,_event,
+                        this.__onActionDelegate._$bind(this)
+                    ]]);
+                    _am[_event] = {};
+                }
+                _am[_event][_name] = _handler;
+            }
+        }",regist actions,https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/util/dispatcher/dispatcher.js#L733-L774,
+"function(_node,_message){
+            var _module = _node._$getData().module;
+            if (_t3._$isModule(_module)){
+                _module._$dispatchEvent('onmessage',_message);
+            }
+        }",send message,https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/util/dispatcher/dispatcher.js#L973-L978,
+"function(_target,_message){
+                var _from = _message.from;
+                while(!!_target){
+                    if (_target._$getPath()!=_from){
+                        _doSendMessage(_target,_message);
+                    }
+                    _target = _target._$getParent();
+                }
+            }",send message to every node in target path,https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/util/dispatcher/dispatcher.js#L983-L991,
+"function(_target,_message){
+                var _from = _message.from;
+                _t3._$breadthFirstSearch(
+                    _target,function(_node){
+                        if (_node._$getPath()!=_from){
+                            _doSendMessage(_node,_message);
+                        }
+                    }
+                );
+            }",broadcast to all target descendants,https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/util/dispatcher/dispatcher.js#L993-L1002,
+"function doTokenValidation(token,publicKey,appId) {
+	  var parts = token.split('.');
+	  if (parts.length < 3) {
+            ibmlogger.getLogger().debug(""The token decode failure details:"", token);
+            return Q.reject(RejectionMessage(""The token is malformed."", token,RejectionMessage.INVALID_TOKEN_ERROR));
+	  }
+		    
+	  if (parts[2].trim() === '' && publicKey) {
+		  return Q.reject(RejectionMessage(""The token missing the signature."", token,RejectionMessage.INVALID_TOKEN_ERROR));
+	  }
+
+	  var valid;
+	  if (publicKey) {
+		  try {
+		    valid = jws.verify(token, publicKey);
+			if (!valid) {
+				return Q.reject(RejectionMessage(""The token was verified failed with the public key."", token,RejectionMessage.INVALID_TOKEN_ERROR));
+			}
+		  }
+		  catch (e) {
+			return Q.reject(RejectionMessage(""An error occurred when verifying the token""+e.message, token, RejectionMessage.INVALID_TOKEN_ERROR));
+		  }
+	  }
+	  
+	  var decodedToken = jws.decode(token,{json:true});
+	  if (!decodedToken) {
+		  return Q.reject(RejectionMessage(""The token was decoded failed"", token, RejectionMessage.INVALID_TOKEN_ERROR));
+	  }
+	  
+	  var payload = decodedToken.payload;
+	  
+	  if (payload.exp) {
+		  if (Math.round(Date.now()) / 1000 >= payload.exp) {
+			  return Q.reject(RejectionMessage(""The token has been expired."", token, RejectionMessage.INVALID_TOKEN_ERROR));
+		  }
+	  }
+	  
+	  if (payload.aud) {
+		  if (payload.aud != appId) {
+			  return Q.reject(RejectionMessage(""The aud in token is inconsistent with the given application id.""+payload.aud+"",""+appId, token, RejectionMessage.INVALID_TOKEN_ERROR));
+		  }
+	  }
+	  /*
+	  if (options.audience) {
+		  if (payload.aud !== options.audience) {
+			  return Q.reject(RejectionMessage(""The audience is different from the expected aud:""+options.audience, token, RejectionMessage.INVALID_TOKEN_ERROR));
+		  }
+	  }
+
+	  if (options.issuer) {
+		    if (payload.iss !== options.issuer) {
+		    	return Q.reject(RejectionMessage(""The issuer is different from the expected iss:""+options.issuer, token, RejectionMessage.INVALID_TOKEN_ERROR));
+		    }
+	  }
+	  */
+	  return Q.resolve(payload);
+}","Verify the token with the public key.
+And validate the exp, iss and aud with the decoded token.",https://github.com/ibm-bluemix-mobile-services/bms-mca-token-validation-strategy/blob/56c2a7a6cb5a55b75eee3b4da6c5ac801b793a0f/lib/util/token-decoder.js#L76-L132,
+"function getErrorMessage(errors) {
+  if (_.isArray(errors)) {
+    return _.uniq(_.pluck(errors, 'stack')).join().replace(/instance./g, '');
+  } else if (errors) {
+    return errors.message;
+  }
+}",convert errors given by jsonschema,https://github.com/Everyplay/serverbone/blob/214cf2a5b003c99d8c353f3a750f36309f0f19a2/lib/errors/validation_error.js#L6-L12,
+"function message( data , color ) {
+	var k , messageString = '' ;
+
+	if ( data.mon ) {
+		messageString = '\n' ;
+
+		if ( color ) {
+			for ( k in data.mon ) {
+				messageString += string.ansi.green + k + string.ansi.reset + ': ' +
+					string.ansi.cyan + data.mon[ k ] + string.ansi.reset + '\n' ;
+			}
+		}
+		else {
+			for ( k in data.mon ) { messageString += k + ': ' + data.mon[ k ] + '\n' ; }
+		}
+	}
+	else if ( Array.isArray( data.messageData ) && data.isFormat ) {
+		//if ( color ) { messageString = string.ansi.italic + string.formatMethod.apply( { color: true } , data.messageData ) ; }
+		//else { messageString = string.formatMethod.apply( { color: false } , data.messageData ) ; }
+
+		messageString = string.formatMethod.apply( color ? formatColor : format , data.messageData ) ;
+	}
+	else if ( data.messageData instanceof Error ) {
+		messageString = string.inspectError( { style: color ? 'color' : 'none' } , data.messageData ) ;
+	}
+	else if ( typeof data.messageData !== 'string' ) {
+		messageString = string.inspect( { style: color ? 'color' : 'none' } , data.messageData ) ;
+	}
+	else {
+		// Even if messageData is not an array, it may contains markup, so it should be formated anyway
+		//messageString = data.messageData ;
+		messageString = string.formatMethod.call( color ? formatColor : format , data.messageData ) ;
+	}
+
+	return messageString ;
+}",Turn style markup off,https://github.com/cronvel/logfella/blob/1b46d80a108d6ad51f9f1732619232de8ff0af53/lib/messageFormatter.js#L43-L78,
+"function hashSymbol( value ) {
+	var i , iMax , hash = 0 , output , offset ;
+
+	value = '' + value ;
+
+	// At least 3 passes
+	offset = 3 * 16 / value.length ;
+
+	for ( i = 0 , iMax = value.length ; i < iMax ; i ++ ) {
+		hash ^= value.charCodeAt( i ) << ( ( i * offset ) % 16 ) ;
+		//hash += value.charCodeAt( i ) ;
+		//hash += value.charCodeAt( i ) * ( i + 1 ) ;
+	}
+
+	output = symbols[ hash % symbols.length ] ;
+	hash = Math.floor( hash / symbols.length ) ;
+
+	output = string.ansi[ fgColors[ hash % fgColors.length ] ] + output ;
+	hash = Math.floor( hash / fgColors.length ) ;
+
+	output = string.ansi[ bgColors[ hash % bgColors.length ] ] + output ;
+	hash = Math.floor( hash / bgColors.length ) ;
+
+	output += string.ansi.reset ;
+
+	return output ;
+}",Naive CRC-like algorithm,https://github.com/cronvel/logfella/blob/1b46d80a108d6ad51f9f1732619232de8ff0af53/lib/messageFormatter.js#L95-L121,
+"function(known) {
+        if (known) {
+            return childrenSpec
+                .filter(function(x) {
+                    return (that.$[x.name] !== undefined);
+                })
+                .map(function(x) { return x.name;});
+        } else {
+            return Object.keys(that.$)
+                .filter(function(x) {
+                    return ((x !== naming.TOP) && (x !== naming.CA) &&
+                            (x !== naming.LOADER) &&
+                            (!that.$[x].__ca_isNotUnknown__) &&
+                            (childrenSpecObj[x] === undefined));
+                });
+        }
+    }","/*
+Filter current children based on whether they are expected.
+
+@param {boolean} known True if we want to select present and expected
+children, false if present and unexpected.
+
+@return {Array.<string>} Names of the selected children.",https://github.com/cafjs/caf_components/blob/dca28007d6618066df8ed058362f0d4a0745c2cf/lib/gen_container.js#L171-L187,
+"function(data, cb) {
+        async.series([
+            cntUtils.many('shutdownChild', unknown(), data),
+            function (cb1) {
+                var cb2 = function(err, res) {
+                    if (err) {
+                        if (data && data.doNotRestart) {
+                            var logMsg = 'Cannot restart children in ' +
+                                    spec.name + ' got error ' +
+                                    myUtils.errToPrettyStr(err);
+                            $._.$.log && $._.$.log.trace(logMsg);
+                            cb1(err);
+                        } else {
+                            logMsg = 'Restarting children in ' + spec.name +
+                                ' due to error ' + myUtils.errToPrettyStr(err);
+                            $._.$.log && $._.$.log.trace(logMsg);
+                            restartAll(data, cb1);
+                        }
+                    } else {
+                        cb1(err, res);
+                    }
+                };
+                cntUtils.many('checkChild', childrenNames, data)(cb2);
+            }
+        ], cb);
+    }","/*
+Reconciliates the current children state with the expected one.
+
+
+@param {Object} data A hint on how to perform the checkup. If
+`data.doNotRestart` is true, we do not attempt recovery, propagating
+an error in the callback instead.
+@param {cbType} cb A callback to propagate a checkup error/success.",https://github.com/cafjs/caf_components/blob/dca28007d6618066df8ed058362f0d4a0745c2cf/lib/gen_container.js#L209-L234,
+"function dispose() {
+  if (typeof this.destroy === 'function') {
+    this.destroy()
+  } else if (typeof this.stop === 'function') {
+    this.stop()
+  } else if (typeof this.kill === 'function') {
+    this.kill()
+  } else if (typeof this.end === 'function') {
+    this.end()
+  } else {
+    throw new Error('Unable to dispose object')
+  }
+}",/* @flow,https://github.com/steelbrain/disposify/blob/9839fb3719348bb7c893da0856f55d57b201cd26/src/index.js#L5-L17,
+"function Traverse (vars) {
+						Object.keys(vars).map((va, r) => {
+							var item = vars[va];
+							switch (typeof(item)) {
+								case ""string"": vars[va] = THS.Format(item); break;;
+								default: Traverse(item);
+							}
+						});
+					}",Format Vars,https://github.com/DFFR-NT/dffrnt.utils/blob/2c10935601888c7661ed587e2cddc425b327d225/lib/fills.js#L538-L546,
+"function form (cols, cllbck, level) {
+							var res = cols.shell;
+							// -----
+							cols.map((V, K) => {
+								// -----
+								var Y = parseInt(K), R = THS.directs[Y],
+									P = cllbck(V).toLines(), H = P.max();
+								// -----
+								res = res.map((re, s) => {
+									return re+border+(!!P[s] ? P[s].pad(' ', H, R, THS.LOG) : '');
+								});
+							});
+							// -----
+							return (res.join(border+'\n')+border);
+						}",PRIVATES,https://github.com/DFFR-NT/dffrnt.utils/blob/2c10935601888c7661ed587e2cddc425b327d225/lib/fills.js#L1577-L1591,
+"function DoLog (which, what) {
+							if (!!log) console.log(""\n%s: %s\n"", which, JSON.stringify(what, null, '    '));
+						}",------,https://github.com/DFFR-NT/dffrnt.utils/blob/2c10935601888c7661ed587e2cddc425b327d225/lib/fills.js#L1793-L1795,
+"function globExts() {
+  let exts = _.flattenDeep(_.concat.apply(null, arguments));
+  return (exts.length <= 1) ? (exts[0] && `.${exts[0]}` || ``) : `.{${exts.join(`,`)}}`;
+}","Returns a wildcard glob pattern of the specified file extensions.
+
+@param {...(string|string[])} extensions - Extensions to be included in the
+wildcard pattern.
+
+@return {string} - Wildcard glob pattern consisting of all specified
+extensions.",https://github.com/andrewscwei/gulp-prismic-mpa-builder/blob/c7fb9180de2aeca2657f0318c0befbd166a9bff5/helpers/task-helpers.js#L121-L124,
+"function() {
+      this.emit('acquiring');
+      const onAcquisitionError = (err) => {
+        logger.debug('Resource acquisition failed with error', err);
+        this.emit('failed', err);
+        this.handle('failed');
+      };
+      const onAcquired = (o) => {
+        this.item = o;
+        this.waitInterval = 0;
+        if (this.item.on) {
+          this.disposeHandle = this.item.once(disposalEvent || 'close', (err) => {
+            logger.info('Resource lost, releasing', err);
+            this.emit('lost');
+            this.transition('released');
+          });
+          this.item.once('error', (err) => {
+            logger.info('Resource error', err);
+            this.transition('failed');
+          });
+          this.item.on('drain', () => {
+            this.emit('drain');
+          });
+        }
+        this.transition('acquired');
+      };
+      const onException = (ex) => {
+        logger.debug('Resource acquisition failed with exception', ex);
+        this.emit('failed', ex);
+        this.handle('failed');
+      };
+      factory()
+        .then(onAcquired, onAcquisitionError)
+        .catch(onException);
+    }","Does the work in acquiring a resource and sets up events for state transitions.
+
+@private
+@memberOf PromiseMachine.prototype",https://github.com/LeisureLink/magicbus/blob/0370c38ebb8c7917cfd3894263d734aefc2d3d29/lib/amqp/machine-factory.js#L40-L74,
+"function (str) {
+        var arr = str.split('.');
+        var obj = root[arr.shift()];
+
+        while (arr.length && obj) {
+            obj = obj[arr.shift()];
+        }
+        return obj;
+    }",Finds globally dot noted namespaced objects from a string,https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L22-L30,
+"function (subViewCfg, parent, options) {
+        this.config = {}; // Refers to configuration (construct, options)
+        this.clear(true);
+        this.parent = parent; // Should refer to parent BaseView instance
+
+        // Set the options
+        this.options = options || {};
+        // Auto initialize a subview when config added
+        this.autoInitSingletons = !!this.options.autoInitSingletons;
+        // If true, then new subview configs and types will default to being singletons
+        this.defaultToSingletons = this.options.defaultToSingletons;
+        // Allow dot notation in 'get' method (if your config keys have dots, then set this to false)
+        this.dotNotation = (this.options.dotNotation !== undefined) ? this.options.dotNotation : true;
+
+        if (subViewCfg) {
+            this.addConfig(subViewCfg);
+        }
+    }","Local constructor intended for use by {@link Backbone.BaseView}. Creates an object specifically
+for manipulating subviews. Is created automatically by the BaseView instance and accessed through the
+'.subs' property of the the instance.
+@constructor SubViewManager
+@class SubViewManager
+@type {SubViewManager}
+@param {object} subViewCfg An object with a configuration to add for subviews (see addConfig(map))
+@param {Backbone.BaseView} parent The parent BaseView instance
+@param [options]",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L51-L68,
+"function (name, instance, singleton) {
+            var arr = (isArray(name)) ? name : (isArray(instance)) ? instance : undefined; // If its a simple array of subviews or configs
+            var map = (!arr && isObject(name) && name instanceof View === false) ? name : undefined; // If its a mapping of subviews
+            var viewOptions = (!arr && instance instanceof View === false) ? instance : undefined;
+            var key;
+            var i;
+            var len;
+
+            if (map) {
+                singleton = (typeof instance === 'boolean') ? instance : undefined;
+                for (key in map) {
+                    if (map.hasOwnProperty(key)) {
+                        map[key] = (isArray(map[key])) ? map[key] : [map[key]];
+                        len = map[key].length;
+                        if (len && map[key][0] instanceof View) {
+                            this._addInstance(key, map[key], singleton);
+                        } else {
+                            i = -1;
+                            while (++i < len) {
+                                this._init(key, map[key][i], singleton);
+                            }
+                        }
+                    }
+                }
+                return this;
+            }
+
+            instance = (name instanceof View) ? name : instance;
+            name = (typeof name === 'string' || typeof name === ""number"") ? name : undefined;
+            singleton = (typeof singleton === 'boolean') ? singleton :
+                    (!name && typeof instance === 'boolean') ? instance : undefined;
+
+            if (viewOptions) {
+                this._init(name, viewOptions, singleton);
+                return this;
+            }
+
+            if (arr && (len = arr.length)) { //eslint-disable-line no-cond-assign
+                if (arr[0] instanceof View) {
+                    this._addInstance(name, arr, singleton);
+                } else {
+                    i = -1;
+                    while (++i < len) {
+                        this._init(name, arr[i], singleton);
+                    }
+                }
+
+                return this;
+            }
+
+            if (instance) {
+                this._addInstance(name, instance, singleton);
+            } else if (name) {
+                this._init(name, singleton);
+            }
+            return this;
+        }","Adds a subView or subViews to the View's list of subViews. Calling
+function must provide instances of views or configurations.
+@memberOf SubViewManager#
+@class SubViewManager
+@type {SubViewManager}
+@method add
+@param {Object} map
+An object with key's to refer to subViews and values that
+are View instances, options to pass to the constructor, or
+an array of either the previous two to add multiple subViews.
+If you pass options or an array of options, the SubViewManager
+will look for a configuration matching the key for these options
+and will initialize subviews based on the config, passing options
+to the constructor.
+@param {Boolean} [singleton]
+True if the instances mapped to the keys should be singletons.
+If you pass options, the singleton param will be ignored.
+@return {SubViewManager}
+ 
+Adds a subView or subViews to the View's list of subViews. Calling
+function must provide instances of views or configurations.
+@memberOf SubViewManager#
+@type {SubViewManager}
+@method add
+@param {String} name
+A string key to refer to the subViews with. Should match
+a key in the subView configuration. If not, a configuration
+will be set up with default values based on the instance
+passed.
+@param {Backbone.View[]|object[]} arr
+An array of View instances or options. Instances will be
+appropriately associated with the key, options will be
+used to instantiate a subView based on the configuration
+matching the key
+@param {Boolean} [singleton]
+True if the added views should be singletons
+@return {SubViewManager}
+ 
+Adds a subView or subViews to the View's list of subViews. Calling
+function must provide instances of views or configurations.
+@memberOf SubViewManager#
+@type {SubViewManager}
+@method add
+@param {Backbone.View[]} arr
+An array of View instances. These will not be accessible
+by a type or key
+@return {SubViewManager}
+ 
+Adds a subView or subViews to the View's list of subViews. Calling
+function must provide instances of views or configurations.
+@memberOf SubViewManager#
+@type {SubViewManager}
+@method add
+@param {String} name
+A string key to refer to the subView with
+@param {Backbone.View} instance
+A View instance
+@param {Object} [singleton]
+If you want the view matching this key to be a singleton
+@return {SubViewManager}
+ 
+Adds a subView or subViews to the View's list of subViews. Calling
+function must provide instances of views or configurations.
+@memberOf SubViewManager#
+@type {SubViewManager}
+@method add
+@param {String} name
+A string key to refer to the subView with. Without an instance
+as the second param, this variant requires that a configuration
+to have been specified matching the 'name' with a constructor to
+initialize.
+@param {Object} [options]
+An object that will be passed as the options parameter to the
+view on initialization.
+@return {SubViewManager}
+ 
+Adds a subView or subViews to the View's list of subViews. Calling
+function must provide instances of views or configurations.
+@memberOf SubViewManager#
+@type {SubViewManager}
+@method add
+@param {Backbone.View} instance
+A Backbone.View instance to add as the subview
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L162-L218,
+"function (key, instance) {
+            if (key instanceof View) {
+                instance = key;
+                key = undefined;
+            }
+            this._addInstance(key, instance);
+            return this;
+        }","Add a subview instance. If is has a config,
+the instance will be associated with that
+config. If the config specifies that the
+view is a singleton an a view for that
+key already exists, it will not be added.
+@param {string|number} key
+@param {Backbone.View} instance
+ 
+Add a subview instance, without a key.
+Since it doesn't have a key, it will
+simply be added to the subViews array.
+@param {Backbone.View} instance",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L234-L241,
+"function (key, instances) {
+            if (isArray(key)) {
+                instances = key;
+                key = undefined;
+            }
+            var i = -1;
+            var len = instances.length;
+            while (++i < len) {
+                this._addInstance(key, instances[i]);
+            }
+            return this;
+        }","Add a subview for each view instance in
+an array for a particular key
+@memberOf SubViewManager#
+@param {string} key
+@param {Backbone.View[]} instances
+@return {SubViewManager}
+ 
+Add a subview for each view instance in
+an array. They will not be associated
+with a key and will be only accessible
+through the subViews array.
+@memberOf SubViewManager#
+@param {Backbone.View[]} instances
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L259-L270,
+"function (map) {
+            var key;
+            for (key in map) {
+                if (map.hasOwnProperty(key)) {
+                    this.addInstance(key, map[key]);
+                }
+            }
+            return this;
+        }","Add instances using an object that
+maps subview keys to the instances
+@param {object} map
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L277-L285,
+"function (keys, options) {
+            var views = [];
+            var len = keys.length;
+            var i = -1;
+            while (++i < len) {
+                views.push(this._init(keys[i], options));
+            }
+            return views;
+        }","Given an array of keys, a subview
+will be instantiated for each key
+based on the configuration for that
+key. The options param will be
+passed to each view on instantiation
+as additional options.
+
+@memberOf SubViewManager#
+@param {String[]} keys
+@param {Object} options
+Additional options to pass
+to each view on init
+@return {Backbone.View[]}
+Array of newly created subviews",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L314-L322,
+"function (options) {
+            var key;
+            for (key in this.config) {
+                if (this.config.hasOwnProperty(key) && this.config[key].singleton) {
+                    this._init(key, options);
+                }
+            }
+            return this;
+        }","Instantiate all singletons defined in the
+config.
+@param  {object} options Additional options
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L329-L337,
+"function (map) {
+            var key;
+            for (key in map) {
+                if (map.hasOwnProperty(key)) {
+                    this._init(key, map[key]);
+                }
+            }
+            return this;
+        }","Create subviews with a map of configured
+subview keys to additional options.
+@param  {object} map
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L344-L352,
+"function (name, config) {
+            var map = (isObject(name) && !isArray(name)) ? name : false;
+            if (map) {
+                each(map, this._addConfig, this);
+                return this;
+            }
+
+            return this._addConfig(config, name);
+        }","Add an configuration for a subview to the SubViewManager.
+It can be instantiated later with the add function.
+@memberOf SubViewManager#
+@type {SubViewManager}
+@class
+@method addConfig
+@param {String} name
+The name or type that you would like use to refer to subViews
+created with this config
+@param {String|Function} construct
+The constructor function for this subView. If its a string, the
+string must resolve to a global name-spaced function in dot notation.
+(e.g. 'Backbone.imageUpload.View')
+@param {String} [options]
+The options or base options you would like to pass to the constructor
+whenever it is initialized.
+@param {String|HTMLElement} [location]
+If you want to be able to automatically place a subView's DOM element
+somewhere in the parent view, pass a selector or DOM element or $ instance
+here that can be used by jquery as a wrapper to append the subView $el
+@param {Boolean} [singleton]
+If you want this view to be a singleton subView. A singleton subView
+will only allow one instance of it to be created.
+@return {SubViewManager}
+ 
+Add an configuration for a subview to the SubViewManager.
+It can be instantiated later with the add function.
+@memberOf SubViewManager#
+@type {SubViewManager}
+@method addConfig
+@param {Object} map
+A object of key names/types to config objects, so you can add multiple configs
+@example
+// A config object should have the following format:
+{
+construct:  // Constructor function or string version (i.e. ""Backbone.BaseView"")
+options:    // Any options you want to pass to the initialize function
+singleton:  // if the object should be configured as a singleton or not
+location:   // A string or jQuery instance in the parent view element. Or
+// a function that returns one of these. The subview el will
+// be appended to that location
+}
+@return {SubViewManager}
+ 
+Add an configuration for a subview to the SubViewManager.
+It can be instantiated later with the add function.
+@memberOf SubViewManager#
+@type {SubViewManager}
+@method addConfig
+@param {String} name
+The name or type that you would like use to refer to subViews
+created with this config
+@param {Object} config
+The configuration object (uses the format described above)
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L436-L444,
+"function (options) {
+            options = options || {};
+            var location = options.appendTo || options.useLocation;
+            return this._render(this.subViews, location, options.clearLocations);
+        }","Render all Subviews.
+@memberOf SubViewManager#
+@type {SubViewManager}
+@param {object} [options]
+[options.appendTo] A selector, HTMLElement, or $ instance to append the subViews to
+[options.useLocation=false]
+True if you want to append the subviews to the locations in their config if they
+have one.
+[options.clearLocations=false]
+True if you want to use empty on the configured locations
+
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L459-L463,
+"function (appendTo, options) {
+            options = options || {};
+            if (isObject(appendTo) && appendTo instanceof Backbone.$ === false && !_.isElement(appendTo)) {
+                options = appendTo;
+                appendTo = options.appendTo;
+            }
+            return this._render(this.subViews, appendTo || true, options.clearLocations);
+        }","Renders subviews and appends them to their 'locations' if they have one.
+If you pass a appendTo param, views are appended to that location instead.
+This is just a shortcut version of renderAppend({})
+@memberOf SubViewManager#
+@type {SubViewManager}
+@param {string|HTMLElement|$} [appendTo]
+Location to append the rendered subiews to
+@param {object} [options]
+@param {boolean} [options.clearLocations=false] Clear configured locations of subviews before rendering
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L476-L483,
+"function (key, options) {
+            var subViews = this.getByType(key) || this.get(key);
+            if (!isArray(subViews)) { subViews = [subViews]; }
+            options = options || {};
+            return this._render(subViews, options.appendTo || options.useLocation, options.clearLocations);
+        }","Render a subView specified by a key (from their configuration key). The key will
+retrieve subViews by looking for a type and then looking for singletons or
+specific instance using the Model/View cid
+
+@memberOf SubViewManager#
+@type {SubViewManager}
+
+@param {String|Backbone.Model|Backbone.View} key
+A key, type, View/Model cid, Model, or View to refer to a specific subView
+or subViews. For example, passing the view cid 'view4' will render only
+the view with that cid, and passing the type 'creatorNames' will render
+views matching the type 'creatorNames'.
+@param {object} [options]
+@param {string|$|HTMLElement} [options.appendTo] Element or selector to append subview(s) to
+@param {boolean} [options.useLocation=false] Append subviews to locations specified in config
+@param {boolean} [options.clearLocations=false] Clear configured locations of subviews before rendering
+
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L504-L509,
+"function (key) {
+            var i = -1;
+            var len;
+            var subViews;
+            var subMgr = new SubViewManager(null, this.parent, this.options);
+            subMgr.config = this.config;
+            subViews = (isArray(key)) ? key : (isFunction(key)) ? this.filter(key) : this.getByType(key);
+            len = subViews.length;
+            while (++i < len) {
+                subMgr.add(subViews[i]._subviewtype, subViews[i]);
+            }
+            return subMgr;
+        }","Returns a new SubViewManager instance with filtered list of subviews.
+@memberOf SubViewManager#
+@type {SubViewManager}
+@param {string|Backbone.View[]|function} key
+The key or type used to refer to a subview or subviews, or a list
+of subViews with a type found in this SubViewManager config, or a function
+that will iterate over the subviews and return true if a subview
+should be included in the filtered SubViewManager instance.
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L521-L533,
+"function (func, args) {
+            var isFunc = isFunction(func);
+            var desc = function (subViews) {
+                var i = -1;
+                var len = subViews.length;
+                var subView;
+                var _func;
+                while (++i < len) {
+                    subView = subViews[i];
+                    _func = isFunc ? func : subView[func];
+                    if (_func) {
+                        if (args) { _func.apply(subView, args);
+                        } else { _func.call(subViews[i]); }
+                    }
+                    if (subView.subViews && subView.subViews.length) {
+                        desc(subView.subViews);
+                    }
+                }
+            };
+            desc(this.subViews);
+            return this;
+        }","Iterate through every subView, calling a function or invoking a method on
+each of them. If a subView has it's own subViews, then it will recursively
+iterate over those as well. The context is switched to the subView calling
+the function/method.
+@memberOf SubViewManager#
+@type {SubViewManager}
+@param {String|Function} func
+A string name of a method to call in the subviews or a function that
+will be called for each view
+@param {Array} [args] An array of arguments to pass to the method/function
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L547-L568,
+"function (preserveElems, clearConfigs) {
+            if (!preserveElems) {
+                this.removeElems();
+            }
+            this.subViews = [];
+            if (this.parent && this.parent.subViews) {
+                this.parent.subViews = this.subViews;
+            }
+            this._subViewsByType = {};
+            this._subViewSingletons = {};
+            this._subViewsByCid = {};
+            this._subViewsByModelCid = {};
+            if (clearConfigs) {
+                this.config = {};
+            }
+            return this;
+        }","Clears all subViews and subView data off of the SubViewManager instance
+@memberOf SubViewManager#
+@type {SubViewManager}
+@param {Boolean} [preserveElems] If true, view $els are left on the DOM
+@param {Boolean} [clearConfigs] If true, resets the subView configs as well
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L577-L593,
+"function (key, preserveElems) {
+            var subViews = (key && (typeof key === ""string"" || key.cid)) ? this.get(key) : key;
+            var len;
+            if (!subViews) { return this; }
+            if (!isArray(subViews)) {
+                subViews = [subViews];
+            }
+            len = subViews ? subViews.length : 0;
+            if (!preserveElems) {
+                this.removeElems(subViews);
+            }
+            if (len) {
+                this.trigger('remove', subViews);
+            }
+            while (subViews && subViews.length) {
+                this._remove(subViews.shift());
+            }
+            return this;
+        }","Remove a subView
+@memberOf SubViewManager#
+@type {SubViewManager}
+@param {String|Backbone.View|Backbone.Model} key
+@param {Boolean} [preserveElems] If true, the View's element will not be removed from the DOM
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L602-L620,
+"function (keys, preserveElems) {
+            var i = 0;
+            var len = keys ? keys.length : 0;
+            for (i; i < len; i++) {
+                this.remove(keys[i], preserveElems);
+            }
+            return this;
+        }","Remove's all subviews matching any
+key in a list of keys
+@memberOf SubViewManager#
+@param  {String[]} keys
+@param {Boolean} [preserveElems=false]
+If true, the views' elements will not
+be removed from the DOM
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L631-L638,
+"function (subViews) {
+            subViews = subViews || this.subViews;
+
+            var i = -1;
+            var len = subViews.length;
+            while (++i < len) {
+                subViews[i].remove();
+            }
+            return this;
+        }","Removes all subView '.el' element from the dom, or if passed a
+list of subViews, removes only the elements in those.
+@memberOf SubViewManager#
+@type {SubViewManager}
+@param {Backbone.View[]} subViews
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L647-L656,
+"function (subViews) {
+            subViews = subViews || this.subViews;
+
+            var i = -1;
+            var len = subViews.length;
+            while (++i < len) {
+                subViews[i].$el.detach();
+            }
+            return this;
+        }","Shortcut method to invoke jQuery's detach function
+on each of the '.$el' elements for each of the
+subviews, or if an array of subViews is passed,
+on each of those. Useful if you want to re-render
+a parent view and want to prevent subviews from
+losing their events and other data that is removed
+when jQuery 'remove' is called on that element.
+@memberOf SubViewManager#
+@type {SubViewManager}
+@param {Backbone.View[]} subViews
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L670-L679,
+"function (key) {
+            if (key.cid) {
+                return this._subViewsByCid[key.cid] || this._subViewsByModelCid[key.cid];
+            }
+            if (key.indexOf('.') > -1 && this.dotNotation) {
+                var segs = key.split('.');
+                var view = this.parent;
+                while (segs.length && view) { view = view.subs.get(segs.shift()); }
+                return view;
+            }
+
+            return this._subViewSingletons[key] || this._subViewsByCid[key] ||
+                this._subViewsByModelCid[key] || this._subViewsByType[key];
+        }","Get a subView instance or an array if multiple instances
+match your key.
+@memberOf SubViewManager#
+@type {SubViewManager}
+@param {Object|String} [key]
+The key to a subView singleton, the view's cid
+the associated model cid, the associated model itself,
+or the associated view itself. If your key is a
+string, you can use
+@return {Backbone.View|Backbone.View[]}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L692-L705,
+"function (subview) {
+            subview = (subview instanceof View === true) ? subview : this.get(subview);
+            return subview._subviewtype;
+        }","Get the subviews type or key
+@memberOf SubViewManager#
+@type {SubViewManager}
+@param subview
+@return {String|Number}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L726-L729,
+"function (type) {
+            var confs = type ? _.pick(this.config, type) : this.config;
+            each(confs, function (config) {
+                this.parent.$(config.location).html('');
+            }, this);
+            return this;
+        }","Clears the html in all locations specified in the subview configs
+@memberOf SubViewManager#
+@type {SubViewManager}
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L747-L753,
+"function (suffix) {
+            var type;
+            suffix = _.isString(suffix) ? suffix : '-container';
+            for (type in this.config) {
+                if (this.config.hasOwnProperty(type) && !this.config[type].location) {
+                    this.setLocationForType(type, '.' + type + suffix);
+                }
+            }
+            return this;
+        }","Generate a location selector for each configured
+subview type. Each subview type will have a
+location set based on the subview type. For
+example,the subview type 'header' would get the
+type '.header-container' (using the default
+suffix).
+@memberOf SubViewManager#
+@param  {string} [suffix=-container]
+The suffix to use for each location
+selector.
+@return {SubViewManager}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L780-L789,
+"function () {
+            var html = '';
+            var template = this.template;
+            if (isFunction(template)) {
+                html = template(result(this, 'templateVars')) || '';
+            }
+            this.$el.html(html);
+            this.subs.renderAppend();
+            return this;
+        }","A basic render function that looks for a template
+function, calls the template with the result of
+the 'templateVars' property, and then set the html
+to the result. Then, subviews are rendered and then
+appended to their locations.
+@memberOf Backbone.BaseView#
+@return {Backbone.BaseView}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L1105-L1114,
+"function ($location, replace) {
+            if (typeof $location === ""string"") {
+                var $parent = (this.parentView) ? this.parentView.$el : Backbone.$('body');
+                $location = $parent.find($location);
+            }
+
+            if (replace) {
+                $location.html(this.el);
+                return this;
+            }
+            $location.append(this.el);
+            return this;
+        }","Place the view DOM element ('.el') in a specified location. By
+default it is appended to the location.
+@memberOf Backbone.BaseView#
+@param {jQuery} $location jQuery DOM element
+@param {boolean} [replace]
+True if you want to replace existing html
+of the location with this view
+@return {Backbone.BaseView}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L1125-L1137,
+"function (event) {
+            var args = slice.call(arguments, 1);
+            var stopPropogation;
+            var anscestor;
+            args.unshift(event);
+            args.push(this);
+            anscestor = this;
+            while (anscestor) {
+                anscestor.trigger.apply(anscestor, args);
+                stopPropogation = anscestor._stopPropogation;
+                if (stopPropogation && stopPropogation[event]) {
+                    stopPropogation[event] = false;
+                    return this;
+                }
+                anscestor = anscestor.parentView;
+            }
+            return this;
+        }","Like Backbone.trigger, except that this will not only use trigger
+on the instance this method is invoked on, but also the instance's
+'parentView', and the parentView's parentView, and so on.
+Additional arguments beyond the event name will be passed
+as arguments to the event handler functions. The view that
+originated the bubbling event will automatically be tacked
+on to the end of the arguments, so you can access it if needed.
+@memberOf Backbone.BaseView#
+@param {String} event The name of the event
+@param {...Mixed} [arg] Argument be passed to event callbacks
+@return {Backbone.BaseView}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L1177-L1194,
+"function (event) {
+            var args = slice.call(arguments, 1);
+            var _trigger = function (subViews) {
+                var i = -1;
+                var len = subViews.length;
+                var subSubs;
+                var stopPropogation;
+                var descend;
+                while (++i < len) {
+                    descend = true;
+                    subViews[i].trigger.apply(subViews[i], args);
+                    stopPropogation = subViews[i]._stopPropogation;
+                    if (stopPropogation && stopPropogation[event]) {
+                        stopPropogation[event] = false;
+                        descend = false;
+                    }
+                    subSubs = subViews[i].subViews;
+                    if (descend && subSubs && subSubs.length) {
+                        _trigger(subSubs);
+                    }
+                }
+            };
+            args.unshift(event);
+            args.push(this);
+            _trigger([this]);
+            return this;
+        }","Triggers an event that will trigger on each of the instances
+subViews, and then if a subView has subViews, will trigger the
+event on that subViews' subViews, and so on. If a subView
+calls stopEvent and passes the event name, then the event
+will not trigger on that subViews' subViews. Arguments
+work in the same manner as they do with triggerBubble.
+@memberOf Backbone.BaseView#
+@param {String} event The event name
+@param {...Mixed} [arg] Argument be passed to event callbacks
+@return {Backbone.BaseView}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L1207-L1233,
+"function (fnName, args) {
+            var func;
+            var ancestor = this;
+            var isFunc = isFunction(fnName);
+            while (ancestor.parentView) {
+                ancestor = ancestor.parentView;
+                if (ancestor) {
+                    func = isFunc ? fnName : ancestor[fnName];
+                    func.apply(ancestor, args);
+                }
+            }
+            return this;
+        }","Invoke a function or method on ancestors
+@memberOf Backbone.BaseView#
+@param {Function|String} fnName
+@param {mixed[]} [args]
+An array of arguments to pass to
+the invocation
+@return {Backbone.BaseView}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L1243-L1255,
+"function (testFn) {
+            var ancestor = this;
+            while (ancestor.parentView) {
+                ancestor = ancestor.parentView;
+                if (ancestor && testFn(ancestor)) {
+                    return ancestor;
+                }
+            }
+            return null;
+        }","Ascends up the ancestor line until an
+a test function returns true
+@param  {Function} testFn
+A function that returns a truthy
+value if the current ancestor should be
+returned
+@return {Backbone.BaseView|null}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L1265-L1274,
+"function (events) {
+            events = events || result(this, 'viewEvents');
+            each(events, function (func, event) {
+                var segs = event.split(' ');
+                var listenTo = (segs.length > 1) ? this[segs[1]] : this;
+                func = isFunction(func) ? func : this[func];
+                if (listenTo) {
+                    this.stopListening(listenTo, segs[0], func);
+                    this.listenTo(listenTo, segs[0], func);
+                }
+            }, this);
+            return this;
+        }","Like delegateEvents, except that instead of events being bound to el, the
+events are backbone events bound to the view object itself. You can create
+a 'viewEvents' object literal property on a View's prototype, and when it's
+instantiated, the view will listen for events on a Backone object based on
+the key.
+
+For example { 'change model': 'render' } would listen for a 'change'
+event on the view's model property and then call view's render method.
+If you only specify an event name and leave the property out of the key,
+then the event will be bound to the view instance directly. For example,
+{ 'submit' : 'render' } would call the render method of the view when
+a 'submit' event occurs on the view.
+@memberOf Backbone.BaseView#
+return {Backbone.BaseView}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L1345-L1357,
+"function (events, includeAdded) {
+            if ((!events || includeAdded) && this.addedEvents) {
+                events = _.clone(_.result(this, 'events')) || {};
+                var groupName;
+                var eventKey;
+                var callback;
+                var addedEvents;
+
+                for (groupName in this.addedEvents) {
+                    if (this.addedEvents.hasOwnProperty(groupName)) {
+                        addedEvents = _.result(this.addedEvents, groupName);
+                        for (eventKey in addedEvents) {
+                            if (addedEvents.hasOwnProperty(eventKey)) {
+                                if (!events[eventKey] || getFunc(this, events[eventKey]) !== getFunc(this, addedEvents[eventKey])) {
+                                    callback = addedEvents[eventKey];
+                                    if (isNaN(parseInt(groupName, 10))) {
+                                        eventKey = addEventNamespace(eventKey, groupName);
+                                    }
+                                    if (!events[eventKey]) {
+                                        events[eventKey] = callback;
+                                    } else {
+                                        eventKey = addEventNamespace(eventKey, ('dibs' + Math.round(Math.random() * _randZeroPadding)));
+                                        events[eventKey] = callback;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return BaseView.__super__.delegateEvents.call(this, events);
+        }","Overrides delegateEvents, only changing behavior if the view
+instance has an 'addedEvents' property defined. This will
+create an events object that has all events from the '.events'
+property and the 'addedEvents' property. Added events
+should be namespaced on a key (or autonamespaced).
+
+@override
+@memberof Backbone.BaseView#
+@param {object} [events]
+If provided, these will be used as the events instead of
+the events found in the events and addedEvents object
+@param {boolean} [includeAdded]
+If true, and an events object is passed as a first param
+then instead of only using delegating events passed in
+as the first param, the events stored in the 'addedEvents'
+property are also delegated
+@returns {Backbone.BaseView}",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L1378-L1409,
+"function (viewInstance) {
+            console.assert(viewInstance instanceof Backbone.BaseView, 'viewInstance must be an instance of Backbone.BaseView');
+            var mixins = slice.call(arguments, 1);
+            _marinate(viewInstance, mixins);
+        }","Marinate only an instance of a view
+@memberOf module:marinate
+@param {Backbone.BaseView} viewInstance
+@param {...object} mixins",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L1460-L1464,
+"function (View, name, eventsObj) { //eslint-disable-line no-shadow
+            console.assert(View.prototype instanceof Backbone.BaseView, 'View must a Backbone.BaseView constructor');
+            _addEvents(View.prototype, name, eventsObj);
+        }","Add DOM events to a BaseView pseudoclass
+@memberOf module:marinate
+@param {function} View Constructor for Backbone.BaseView
+@param {string} name Namespace for your added events
+@param {object} eventsObj Backbone DOM events hash",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L1472-L1475,
+"function (viewInstance, name, eventsObj) {
+            console.assert(viewInstance instanceof Backbone.BaseView, 'viewInstance must be an instance of Backbone.BaseView');
+            _addEvents(viewInstance, name, eventsObj);
+        }","Add DOM events to a BaseView instance
+@memberOf module:marinate
+@param {Backbone.BaseView} viewInstance
+@param {string} name Namespace for your added events
+@param {object} eventsObj Backbone DOM events hash",https://github.com/1stdibs/backbone-base-and-form-view/blob/9c49f9ac059ba3177b61f7395151de78b506e8f7/backbone-baseview.js#L1483-L1486,
+"function execCommand (commandStr, cb) {
+  var args = commandStr.split(' ').filter(function (item) {
+    return item !== ''
+  })
+  var command = args.shift()
+  if (opts.verbose.val) {
+    console.log('args', args)
+  }
+  var proc = spawn(command
+    , args
+    , { cwd: cwd })
+  pids[proc.pid] = commandStr
+  var out = ''
+  var err = ''
+  proc.stdout.on('data', function (data) {
+    out += data
+  })
+  proc.stderr.on('data', function (data) {
+    err += data
+  })
+  proc.on('close', function (code) {
+    delete pids[proc.pid]
+    if (err !== '') {
+      cb(err)
+    } else {
+      cb(null, out)
+    }
+  })
+}","exports.sprite = function (images, dimensions, tmpDir, maxCols, format, out) { return new Promise(function (resolve, reject) { var l , nbLeft , i , subSprites , stop , spritePath , subSpritePath , error if (images && dimensions && tmpDir && maxCols) { l = images.length nbLeft = Math.ceil(l / maxCols) subSprites = [] spritePath = out + '.jpg' if (l > maxCols) { for (i = 0; i < l; i += maxCols) { subSpritePath = tmpDir + '/' + i + '.jpg' subSprites.push(subSpritePath) exports.subSprite(images.slice(i, i + maxCols) , dimensions , format , subSpritePath , function (err) { if (err) { reject(err) } else { nbLeft -= 1 if (nbLeft === 0) { resolve(exports.assembleSprites(subSprites, spritePath)) } } }) } } else { resolve(exports.subSprite(images, dimensions, spritePath)) } } else { error = new Error(""Invalid request"") error.fn = ""sprite"" error.details = ""invalid parameters"" error.parameters = { images: images || ""MISSING"" , dimensions: dimensions || ""MISSING"" , tmpDir: tmpDir || ""MISSING"" , maxCols: maxCols || ""MISSING"" } reject(error) } }) } exports.subSprite = function (images, dimensions, format, out) { return new Promise(function (resolve, reject) { var dimensionsString = dimensions.width + ""x"" + dimensions.height , imagesString = ""'"" + images.join(""' '"") + ""'"" , error if (images && dimensions && out) { execCommand(""gm convert "" + imagesString + "" -resize '"" + dimensionsString + ""^'"" + "" -gravity 'Center'"" + "" -crop '"" + dimensionsString + ""+0+0'"" + "" +append"" + format + "" '"" + out + ""'"" , function (err) { if (err) { reject(err) } else { resolve(out) } }) } else { error = new Error(""Invalid request"") error.fn = ""subSprite"" error.details = ""invalid parameters"" error.parameters = { images: images || ""MISSING"" , dimensions: dimensions || ""MISSING"" , out: out || ""MISSING"" } reject(error) } }) } exports.assembleSprites = function (images, out) { return new Promise(function (resolve, reject) { var imagesString = ""'"" + images.join(""' '"") + ""'"" , error if (images && out) { execCommand(""gm convert "" + imagesString + "" -append"" + format + "" '"" + out + ""'"" , function (err) { if (err) { reject(err) } else { resole(out) } }) } else { error = new Error(""Invalid request"") error.fn = ""assembleSprites"" error.details = ""invalid parameters"" error.parameters = { images: images || ""MISSING"" , out: out || ""MISSING"" } reject(error) } }) }",https://github.com/vigour-io/shutter/blob/761bcad57b804237870b8672f10247368262a519/lib/imgManip.js#L653-L681,
+"function(context, expression, onChange, callbackContext) {
+    var observer = this.createObserver(expression, onChange, callbackContext || context);
+    observer.bind(context);
+    return observer;
+  }","Observes any changes to the result of the expression on the context object and calls the callback.
+@param {Object} context The context to bind the expression against
+@param {String} expression The expression to observe
+@param {Function} onChange The function which will be called when the expression value changes
+@return {Observer} The observer created",https://github.com/chip-js/observations-js/blob/a48b32a648089bc86b502712d78cd0b3f8317d50/src/observations.js#L56-L60,
+"function(context, expression, onAdd, onRemove, callbackContext) {
+    var observer = this.createMemberObserver(expression, onAdd, onRemove, callbackContext);
+    observer.bind(context);
+    return observer;
+  }","Observe an expression and call `onAdd` and `onRemove` whenever a member is added/removed from the array or object.
+@param {Object} context The context to bind the expression against
+@param {String} expression The expression to observe
+@param {Function} onAdd The function which will be called when a member is added to the source
+@param {Function} onRemove The function which will be called when a member is removed from the source
+@return {Observer} The observer created",https://github.com/chip-js/observations-js/blob/a48b32a648089bc86b502712d78cd0b3f8317d50/src/observations.js#L75-L79,
+"function(expression, onAdd, onRemove, callbackContext) {
+    if (!onAdd) onAdd = function(){};
+    if (!onRemove) onRemove = function(){};
+
+    var observer = this.createObserver(expression, this.createMemberObserverCallback.bind(this, onAdd, onRemove, callbackContext));
+
+    observer.getChangeRecords = true;
+    return observer;
+  }","Observe an expression and call `onAdd` and `onRemove` whenever a member is added/removed from the array or object.
+@param {String} expression The expression to observe
+@param {Function} onAdd The function which will be called when a member is added to the source
+@param {Function} onRemove The function which will be called when a member is removed from the source
+@return {Observer} The observer",https://github.com/chip-js/observations-js/blob/a48b32a648089bc86b502712d78cd0b3f8317d50/src/observations.js#L104-L112,
+"function(expression, options) {
+    if (options && options.isSetter) {
+      return expressions.parseSetter(expression, this.globals, this.formatters, options.extraArgs);
+    } else if (options && options.extraArgs) {
+      var allArgs = [expression, this.globals, this.formatters].concat(options.extraArgs);
+      return expressions.parse.apply(expressions, allArgs);
+    } else {
+      return expressions.parse(expression, this.globals, this.formatters);
+    }
+  }","Parses an expression into a function using the globals and formatters objects associated with this instance of
+observations.
+@param {String} expression The expression string to parse into a function
+@param {Object} options Additional options to pass to the parser.
+`{ isSetter: true }` will make this expression a setter that accepts a value.
+`{ extraArgs: [ 'argName' ]` will make extra arguments to pass in to the function.
+@return {Function} A function that may be called to execute the expression (call it against a context using=
+`func.call(context)` in order to get the data from the context correct)",https://github.com/chip-js/observations-js/blob/a48b32a648089bc86b502712d78cd0b3f8317d50/src/observations.js#L181-L190,
+"function(source, expression, value) {
+    return this.getExpression(expression, { isSetter: true }).call(source, value);
+  }","Sets the value on the expression in the given context object
+@param {Object} context The context object the expression will be evaluated against
+@param {String} expression The expression to set a value with
+@param {mixed} value The value to set on the expression
+@return {mixed} The result of the expression against the context",https://github.com/chip-js/observations-js/blob/a48b32a648089bc86b502712d78cd0b3f8317d50/src/observations.js#L211-L213,
+"function(callback) {
+    if (typeof callback === 'function') {
+      this.afterSync(callback);
+    }
+
+    if (this.pendingSync) {
+      return false;
+    }
+
+    var fallback = setTimeout(this.syncNow, 500);
+    this.windows = this.windows.filter(this.removeClosed);
+    this.pendingSync = this.windows.map(this.queueSync).concat(fallback);
+    return true;
+  }",Schedules an observer sync cycle which checks all the observers to see if they've changed.,https://github.com/chip-js/observations-js/blob/a48b32a648089bc86b502712d78cd0b3f8317d50/src/observations.js#L217-L230,
+"function(callback) {
+    if (typeof callback === 'function') {
+      this.afterSync(callback);
+    }
+
+    if (this.pendingSync) {
+      clearTimeout(this.pendingSync.pop());
+      this.pendingSync.forEach(this.cancelQueue);
+      this.pendingSync = null;
+    }
+
+    if (this.syncing) {
+      this.rerun = true;
+      return false;
+    }
+
+    this.runSync();
+    return true;
+  }",Runs the observer sync cycle which checks all the observers to see if they've changed.,https://github.com/chip-js/observations-js/blob/a48b32a648089bc86b502712d78cd0b3f8317d50/src/observations.js#L234-L252,
+"function(observer, skipUpdate) {
+    this.observers.add(observer);
+    if (!skipUpdate) {
+      observer.forceUpdateNextSync = true;
+      observer.sync();
+    }
+  }","Adds a new observer to be synced with changes. If `skipUpdate` is true then the callback will only be called when a change is made, not initially.",https://github.com/chip-js/observations-js/blob/a48b32a648089bc86b502712d78cd0b3f8317d50/src/observations.js#L329-L335,
+"function configure_logging() {
+  if ('log' in CONF) {
+
+    if ('plugin' in CONF.log) { process.env.NODE_LOGGER_PLUGIN = CONF.log.plugin; }
+    if ('level'  in CONF.log) { process.env.NODE_LOGGER_LEVEL  = CONF.log.level; }
+
+    if ('customlevels' in CONF.log) {
+      for (var key in CONF.log.customlevels) {
+        process.env['NODE_LOGGER_LEVEL_' + key] = CONF.log.customlevels[key];
+      }
+    }
+  }
+}",Default configuration of logging,https://github.com/inadarei/nodebootstrap-server/blob/250b5affd440b6030e7fb7eb435c5d952abf91af/app.js#L117-L129,
+"function LocalStorage() {
+        this.version = ""0.1"";
+        if (!miapp.Xml) {
+            throw new Error(""miapp.Xml needs to be loaded before miapp.LocalStorage!"");
+        }
+        if (!miapp.Json) {
+            throw new Error(""miapp.Json needs to be loaded before miapp.LocalStorage!"");
+        }
+        if (!miapp.Xml.isXml || !miapp.Xml.xml2String || !miapp.Xml.string2Xml) {
+            throw new Error(""miapp.Xml with isXml(), xml2String() and string2Xml() needs to be loaded before miapp.LocalStorage!"");
+        }
+        if (!miapp.Json.object2String || !miapp.Json.string2Object) {
+            throw new Error(""miapp.Json with object2String() and string2Object() needs to be loaded before miapp.LocalStorage!"");
+        }
+    }",Constructor,https://github.com/ofidj/fidj/blob/e57ebece54ee68211d43802a8e0feeef098d3e36/.todo/miapp.tools.storage.js#L142-L156,
+"function FileStorage($q, $rootScope) {
+        this.version = ""0.1"";
+        this.q = $q;
+        this.rootScope = $rootScope;
+        this.grantedBytes = 0;
+        this.fs = null;
+        this.urlPrefix = '';
+        this.storageType = null;
+
+        this.initDone = false;
+        this.initPromises = [];
+        this.initTimer = null;
+    }",Constructor,https://github.com/ofidj/fidj/blob/e57ebece54ee68211d43802a8e0feeef098d3e36/.todo/miapp.tools.storage.js#L308-L320,
+"function errorMessage(fileError) {
+        var msg = '';
+        switch (fileError.code) {
+            case FileError.NOT_FOUND_ERR:
+                msg = 'File not found';
+                break;
+            case FileError.SECURITY_ERR:
+                // You may need the --allow-file-access-from-files flag
+                // if you're debugging your app from file://.
+                msg = 'Security error';
+                break;
+            case FileError.ABORT_ERR:
+                msg = 'Aborted';
+                break;
+            case FileError.NOT_READABLE_ERR:
+                msg = 'File not readable';
+                break;
+            case FileError.ENCODING_ERR:
+                msg = 'Encoding error';
+                break;
+            case FileError.NO_MODIFICATION_ALLOWED_ERR:
+                msg = 'File not modifiable';
+                break;
+            case FileError.INVALID_STATE_ERR:
+                msg = 'Invalid state';
+                break;
+            case FileError.SYNTAX_ERR:
+                msg = 'Syntax error';
+                break;
+            case FileError.INVALID_MODIFICATION_ERR:
+                msg = 'Invalid modification';
+                break;
+            case FileError.QUOTA_EXCEEDED_ERR:
+                // You may need the --allow-file-access-from-files flag
+                // if you're debugging your app from file://.
+                msg = 'Quota exceeded';
+                break;
+            case FileError.TYPE_MISMATCH_ERR:
+                msg = 'Type mismatch';
+                break;
+            case FileError.PATH_EXISTS_ERR:
+                msg = 'File already exists';
+                break;
+            default:
+                msg = 'Unknown FileError code (code= ' + fileError.code + ', type=' + typeof(fileError) + ')';
+                break;
+        }
+        return msg;
+    }",Private API helper functions and variables hidden within this function scope,https://github.com/ofidj/fidj/blob/e57ebece54ee68211d43802a8e0feeef098d3e36/.todo/miapp.tools.storage.js#L1356-L1404,
+"function(template, delta) {
+
+    assert.ok(Array.isArray(template), ""'template' is not an array"");
+    assert.ok(Array.isArray(delta), ""'delta' is not an array"");
+
+    /*
+     *  This merge step is inefficient O(n*m) but we are assuming small arrays
+     *  and 'delta' typically smaller than 'template'.
+     *
+     *  A 'delta' operation could merge with another component in 'template'
+     *  with the same name, it could delete an existing entry if the 'module'
+     *  key is null, or it could insert a new entry in the array.
+     *  The insertion point of a new entry is just after the previous
+     *  operation target. If the first operation in 'delta' is a new entry it
+     *  becomes the first element.
+     *
+     *  Note that 'delta' is not sorted and it could contain duplicates. This
+     * allow us to change the order in the original list. For example,
+     *  if template is [A|B|...], and we want to swap B and A, we can add these
+     * three operations in delta:
+     *
+     *     Remove A (assign null to A's module)
+     *     Touch B (just have an entry with B's name that won't change B)
+     *     Add A with the original A's values (inserted after B)
+     *
+     */
+
+    var findEntry = function(result, name, lastOp) {
+        return result.some(function(x, i) {
+            if (x.name === name) {
+                lastOp.index = i;
+                return true;
+            } else {
+                return false;
+            }
+        });
+    };
+
+    var deleteEntry = function(result, name, lastOp) {
+        if (findEntry(result, name, lastOp)) {
+            result.splice(lastOp.index, 1);
+            lastOp.index = lastOp.index -1;
+        }
+    };
+
+    var insertEntry = function(result, entry, lastOp) {
+        // splice prepends, and we want after
+        lastOp.index = lastOp.index + 1;
+        result.splice(lastOp.index, 0, entry);
+    };
+
+    var result = myUtils.deepClone(template);
+    var lastOp = {index: -1};
+    delta.forEach(function(x) {
+        if (x.module === null) {
+            deleteEntry(result, x.name, lastOp);
+        } else if (findEntry(result, x.name, lastOp)) {
+            result[lastOp.index] = mergeObj(result[lastOp.index], x, false);
+        } else {
+            insertEntry(result, myUtils.deepClone(x), lastOp);
+        }
+    });
+    return result;
+}","Merge two component arrays of matching components.
+
+@param {Array.<specType>} template
+@param {Array.<specDeltaType>} delta
+@return {Array.<specType>} result",https://github.com/cafjs/caf_components/blob/dca28007d6618066df8ed058362f0d4a0745c2cf/lib/templateUtils.js#L63-L126,
+"function(result, name, lastOp) {
+        return result.some(function(x, i) {
+            if (x.name === name) {
+                lastOp.index = i;
+                return true;
+            } else {
+                return false;
+            }
+        });
+    }","/*
+This merge step is inefficient O(n*m) but we are assuming small arrays
+and 'delta' typically smaller than 'template'.
+
+A 'delta' operation could merge with another component in 'template'
+with the same name, it could delete an existing entry if the 'module'
+key is null, or it could insert a new entry in the array.
+The insertion point of a new entry is just after the previous
+operation target. If the first operation in 'delta' is a new entry it
+becomes the first element.
+
+Note that 'delta' is not sorted and it could contain duplicates. This
+allow us to change the order in the original list. For example,
+if template is [A|B|...], and we want to swap B and A, we can add these
+three operations in delta:
+
+Remove A (assign null to A's module)
+Touch B (just have an entry with B's name that won't change B)
+Add A with the original A's values (inserted after B)",https://github.com/cafjs/caf_components/blob/dca28007d6618066df8ed058362f0d4a0745c2cf/lib/templateUtils.js#L90-L99,
+"function(template, delta) {
+    assert.equal(typeof(template), 'object', ""'template' is not an object"");
+    assert.equal(typeof(delta), 'object', ""'delta' is not an object"");
+
+    var result = myUtils.deepClone(template);
+    Object.keys(delta).forEach(function(x) {
+        result[x] = myUtils.deepClone(delta[x]);
+    });
+    return result;
+}","Merge two environments of matching components.
+
+@param {Object} template
+@param {Object} delta
+@return {Object} result",https://github.com/cafjs/caf_components/blob/dca28007d6618066df8ed058362f0d4a0745c2cf/lib/templateUtils.js#L135-L144,
+"function(template, delta, overrideName) {
+    if (template.name !== delta.name) {
+        if (!overrideName) {
+            var err = new Error('mergeObj: description names do not match');
+            err['template'] = template;
+            err['delta'] = delta;
+            throw err;
+        }
+    }
+
+    /** @type specType*/
+    var result = {
+        name: delta.name || template.name,
+        module: (delta.module ? delta.module : template.module),
+        description: (delta.description ? delta.description :
+                      template.description),
+        env: mergeEnv(template.env, delta.env || {})
+    };
+
+    if (template.components || delta.components) {
+        result.components = mergeComponents(template.components || [],
+                                            delta.components || []);
+    }
+    return result;
+}","Merge two descriptions with the same name.
+
+
+@param {specType} template
+@param {specDeltaType} delta
+@param {boolean} overrideName
+@return {specType} result",https://github.com/cafjs/caf_components/blob/dca28007d6618066df8ed058362f0d4a0745c2cf/lib/templateUtils.js#L156-L180,
+"function(desc, f) {
+    if (typeof desc === 'object') {
+        f(desc.env);
+        if (Array.isArray(desc.components)) {
+            desc.components.forEach(function(x) { patchEnv(x, f);});
+        }
+    } else {
+        var err = new Error('patchEnv: not an object');
+        err['desc'] = desc;
+        throw err;
+    }
+}","Patches every environment in a description.
+
+@param {specType} desc A description to patch.
+@param {function(Object)} f A function to patch an environment.",https://github.com/cafjs/caf_components/blob/dca28007d6618066df8ed058362f0d4a0745c2cf/lib/templateUtils.js#L215-L226,
+"function(prefix, f) {
+    var retF = function(env) {
+        Object.keys(env)
+            .forEach(function(x) {
+                var val = env[x];
+                if ((typeof val === 'string') &&
+                    (val.indexOf(prefix) === 0)) {
+                    var propName = val.substring(prefix.length,
+                                                 val.length);
+                    env[x] = f(propName);
+                } else if (Array.isArray(val)) {
+                    retF(val);
+                } else if (val && (typeof val === 'object')) {
+                    retF(val);
+                }
+            });
+    };
+    return retF;
+}","Returns a function that filters relevant values in an environment and
+applies a transform to them.
+
+@param {string} prefix A matching prefix for selected values.
+@param {function(string): Object} f A function that transforms matching
+values.",https://github.com/cafjs/caf_components/blob/dca28007d6618066df8ed058362f0d4a0745c2cf/lib/templateUtils.js#L237-L255,
+"function($scope, element, attributes) {
+				var target_url = null;
+				$scope.target = $scope.target || attributes.njaxArchive;
+				if(!$scope.target){
+					throw new Error(""Invalid Target"")
+				}
+				if(typeof($scope.target) == 'string'){
+					var target =  $scope.$eval($scope.target, NJaxBootstrap);
+					if(target){
+						if(typeof(target) == 'string'){
+							target_url = target;
+						}else{
+							if(!(target.api_url || target.url)){
+								throw new Error(""NJaxBootstrap Object found not valid. No api_url or url"")
+							}
+							target_url = target.api_url || target.url;
+						}
+
+					}else{
+						target_url = target;
+					}
+
+
+				}else{
+					if(!($scope.target.api_url || $scope.target.url)){
+						throw new Error(""Invalid Target Option"");
+					}
+					target_url = $scope.target.api_url || $scope.target.url;
+				}
+
+
+
+				element.on('click', function(e){
+					e.preventDefault();
+					if(target_url.substr(0, 2) != '//'){
+						target_url = '//' + target_url;
+					}
+					console.log('target_url', target_url);
+					return $http.delete(target_url).then(function(result){
+						if($scope.callback){
+							return $scope.callback(result);
+						}
+						if($scope.redirect_url){
+							document.location = $scope.redirect_url
+						}
+					});
+				});
+
+			}","templateUrl: '/templates/directives/njaxArchiveButton.html',",https://github.com/schematical/njax/blob/db24410eb0d6d3813e201a1df286c1d07aa63a35/public/js/directives.js#L216-L264,
+"function (scope, element, attrs) {
+
+					SubscriptionService.queryEntity(scope.target, scope.type).success( function(response){
+
+
+						scope.posting = false;
+
+						scope.count = response.length;
+						var jElement = angular.element(element[0]);
+						jElement.html(scope.count);
+
+					}).error(function(err){
+						throw err;
+					})
+
+				}","templateUrl: '/templates/directives/njaxComments.html',",https://github.com/schematical/njax/blob/db24410eb0d6d3813e201a1df286c1d07aa63a35/public/js/directives.js#L756-L771,
+"function getTransport(options = {}) {
+  return new Promise((resolve, reject) => {
+    try {
+      const defaultTransport = {
+        type: 'direct',
+        transportOptions: { debug: true }
+      };
+      const { transportObject = defaultTransport, } = options;
+      const nodemailerTransporter = nodemailer.createTransport(transportMap[transportObject.type](transportObject.transportoptions));
+      if (transportObject.type === 'stub') {
+        const originalSendmail = nodemailerTransporter.sendMail;
+        nodemailerTransporter.sendMail = (data, callback) => {
+          (function(maildata, mailcallback, fn) {
+            return fn.call(nodemailerTransporter, maildata, function(err, email_status) {
+              email_status.response = email_status.response.toString();
+              mailcallback(err, email_status);
+            });
+          })(data, callback, originalSendmail);
+        };
+      }
+      nodemailerTransporter.use('compile', htmlToText());
+      resolve(nodemailerTransporter);
+    } catch (e) {
+      reject(e);
+    }
+  });
+}","returns a node mailer transport based off of a json configuration
+
+@param {any} [options={}]
+@param {object} options.transportObject the json configuration for a node mailer transport
+@param {string} options.transportObject.transportType [ses|direct|sendmail|smtp-pool|sendgrid|sendgridapi|mailgun|stub]
+@param {object} options.transportObject.transportOptions options for a node mailer transport
+@returns {promise} resolves a node mailer transport",https://github.com/repetere/periodicjs.core.mailer/blob/f544584cb1520015adac0326f8b02c38fbbd3417/lib/getTransport.js#L38-L64,
+"function s_SAFE_COMPUTED_OPERANDS(node)
+{
+   const operands = [];
+
+   if (typeof node.computed === 'boolean' && node.computed)
+   {
+      // The following will pick up a single literal computed value (string).
+      if (node.key.type === 'StringLiteral')
+      {
+         operands.push(TraitUtil.safeValue(node.key));
+      }
+      else // Fully evaluate AST node and children for computed operands.
+      {
+         operands.push(...ASTGenerator.parse(node.key).operands);
+      }
+   }
+   else // Parent is not computed and `parent.key` is an `Identifier` node.
+   {
+      operands.push(TraitUtil.safeName(node.key));
+   }
+
+   return operands;
+}","Provides a utility method that determines the operands of a method for Babylon AST nodes. If the name is a computed
+value and not a string literal then `ASTGenerator` is invoked to determine the computed operands.
+
+@param {object}   node - The current AST node.
+
+@returns {Array<*>}",https://github.com/typhonjs-node-escomplex/escomplex-plugin-syntax-babylon/blob/d0ce535ccebb2f8afc4bc991db6611fcd7e01ce5/src/PluginSyntaxBabylon.js#L269-L291,
+"function Circle2D( x , y , r ) {
+	this.center = new Vector2D( x , y ) ;
+	this.r = + r ;
+}","/*
+This is the equation:
+(X - x)² + (Y - y)² = r²",https://github.com/cronvel/math-kit/blob/a054ee5e4e3d5582d3b06f069a4b70303436dc00/lib/geometry/Circle2D.js#L40-L43,
+"function(_event){
+            var _element = _event.srcElement,
+                _class = _cache[_element.id],
+                _name = _element.className;
+            if (_name.indexOf(_class)<0){
+                _element.className += ' '+_class;
+            }
+        }",enter element,https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/util/hover/platform/hover.patch.js#L23-L30,
+"function(_list){
+            var _result = 0;
+            _u._$forEach(
+                _list,function(_size){
+                    if (!_size) return;
+                    if (!_result){
+                        _result = _size;
+                    }else{
+                        _result = Math.min(_result,_size);
+                    }
+                }
+            );
+            return _result;
+        }",get min value but not zero,https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/base/element.js#L463-L476,
+"function injectPaths(paths) {
+    u.each(paths, function(path) {
+      if (path.inject) {
+        // injected css and js sources are always rooted paths
+        var src = mkSrc(path);
+        if (/\.css$/i.test(src.path)) return opts.injectCss.push(src);
+        if (/\.js$|\.es6$|\.jsx$/i.test(src.path)) return opts.injectJs.push(src);
+        return opts.log('Don\'t know how to inject', path.path);
+      }
+    });
+  }",add injectable staticPaths to opts.injectCss or opts.injectJs,https://github.com/jldec/pub-resolve-opts/blob/432dce8a638e1a909256179957a4ec25ac9542b7/resolve-opts.js#L214-L224,
+"function mkSrc(p) {
+    var src = {};
+    if (typeof p.inject === 'string') { src.async = p.inject; }
+    src.path = fspath.extname(p.route) ?
+               p.route :
+               ppath.join(p.route || '/', fspath.basename(p.path));
+    return src;
+  }",computes script src path from p.route + p.path returns object { path: async: },https://github.com/jldec/pub-resolve-opts/blob/432dce8a638e1a909256179957a4ec25ac9542b7/resolve-opts.js#L247-L254,
+"function setOptName(opt, optKey) {
+    var key$ = optKey + '$';
+    opts[key$] = opts[key$] || {};
+    var name = opt.name || fspath.basename(opt.path);
+    while (opts[key$][name]) {
+      name = '_' + name;
+    }
+    opts[key$][name] = opt;
+    opt.name = name;
+  }",assign a unique name to opt by indexing opts.[optKey], NOTE: this may overwrite opt.name,https://github.com/jldec/pub-resolve-opts/blob/432dce8a638e1a909256179957a4ec25ac9542b7/resolve-opts.js#L321-L330
+"function watchOpts(src) {
+    if ((src._pkg && !opts.watchPkgs) || ('watch' in src && !src.watch)) return false;
+    return (typeof src.watch === 'object') ? src.watch : {};
+  }",don't watch inside packages unless opts.watchPkgs don't watch if src.watch = falsy,https://github.com/jldec/pub-resolve-opts/blob/432dce8a638e1a909256179957a4ec25ac9542b7/resolve-opts.js#L334-L337,
+"function pkgPath(pkg) {
+    pkg = pkg.pkg || pkg;
+    var pkgPath = npmResolve(pkg, { basedir:opts.basedir, paths:builtins } );
+    if (!pkgPath) throw new Error('cannot resolve module ' + pkg);
+    return pkgPath;
+  }",resolve package path given package name or {pkg:name},https://github.com/jldec/pub-resolve-opts/blob/432dce8a638e1a909256179957a4ec25ac9542b7/resolve-opts.js#L340-L345,
+"function normalizeOpts(obj, basedir, pkg) {
+    obj = obj || {};
+
+    u.each(OPTSKEYS, function(key) {
+      obj[key] = normalizeOptsKey(obj[key], basedir, pkg);
+    });
+
+    normalizeFqImages(obj);
+
+    return obj;
+  }","mutate opts obj by normalizing Key values into form [ { path:x },... ] qualify relative paths against basedir",https://github.com/jldec/pub-resolve-opts/blob/432dce8a638e1a909256179957a4ec25ac9542b7/resolve-opts.js#L349-L359,
+"function normalizeOptsKey(aval, basedir, pkg) {
+
+    aval = aval || [];
+
+    if (!u.isArray(aval)) {
+      aval = [ aval ];
+    }
+
+    return u.map(u.compact(aval), function(val) {
+      return normalize(val, basedir, pkg);
+    });
+
+  }",normalize a single opts key,https://github.com/jldec/pub-resolve-opts/blob/432dce8a638e1a909256179957a4ec25ac9542b7/resolve-opts.js#L362-L374,
+"function normalize(val, basedir, pkg) {
+
+    if (typeof val === 'string') {
+      val = { path: val };
+    }
+
+    var originalPath = val.path;
+
+    // npm3 treatment of sub-package paths starting with ./node_modules/
+    var subPkgName = val.path.replace(/^\.\/node_modules\/([^/]+).*/,'$1');
+    if (subPkgName != originalPath)  {
+      var subPkg = resolvePkg({ path:subPkgName }, basedir, true);
+      val.path = subPkg.dir + val.path.slice(15 + subPkgName.length);
+    }
+    // join with basedir if relative directory path
+    else if (/^\.$|^\.\.$|^\.\/|^\.\.\//.test(val.path)) {
+      val.path = fspath.join(basedir || opts.basedir, val.path);
+    }
+
+    // for brevity on console output
+    val.inspect = function() {
+      return (originalPath) +
+             (pkg ? ' in ' + pkg : '') +
+             (val.cache ?  ' (cached)' : '');
+    };
+
+    if (pkg) {
+      val._pkg = pkg;
+    }
+
+    return val;
+  }",normalize a single opts key value,https://github.com/jldec/pub-resolve-opts/blob/432dce8a638e1a909256179957a4ec25ac9542b7/resolve-opts.js#L377-L408,
+"function(_id){
+            var _conf  = _cache[_id],
+                _node1 = _e._$get(_id),
+                _node2 = _e._$get(_conf.xid);
+            if (!_node1||!_conf) return;
+            var _event = {
+                input:_node1.value
+            };
+            _event.length = _conf.onlength(_event.input);
+            _event.delta = _conf.max-_event.length;
+            _conf.onchange(_event);
+            _node2.innerHTML = _event.value||('剩余'+Math.max(0,_event.delta)+'个字');
+        }",input change,https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/util/counter/counter.js#L70-L82,
+"function TimeoutError(message) {
+  this.message = message;
+  this.timeout = true;
+
+  Error.captureStackTrace(this, arguments.callee);
+}","Timeout Error.
+
+@param {String} message
+@constructor",https://github.com/vesln/hydro/blob/3f4d2e4926f913976187376e82f1496514c39890/lib/timeout-error.js#L8-L13,
+"function onFunction(data, op, iterStr, context) {
+	var	iter,
+		data;
+		
+	// Check task
+	if(!op || !data || !iterStr || !context) {
+		throw Error('Worker received invalid task');
+	}
+	
+	// parse the serialized function
+	// eval() may be evil but here we don't have much choice
+	eval('var iter = ' + iterStr);
+
+	switch(op) {
+		case 'map':
+			data = data.map(iter);
+			break;
+		case 'filter': 
+			data = data.filter(iter);
+			break;
+		default:
+			data = null;
+			break;
+	}
+	
+	process.send({
+		result: data,
+		context: context
+	});
+}",Handle functional requests,https://github.com/arokor/pararr.js/blob/215ddc452e24fd239b42de3997738510d1888135/lib/paworker.js#L2-L31,
+"function onExec(funcStr, parStr, context) {
+	var	func,
+		par, 
+		data,
+		err = null;
+	try {	
+		// Check task
+		if(!funcStr || !context) {
+			throw Error('Worker received invalid task');
+		}
+
+		par = parStr ? JSON.parse(parStr) : null;
+
+		// parse the serialized function
+		// eval() may be evil but here we don't have much choice
+		eval('var func = ' + funcStr);
+		data = func(par);
+//		console.log(' - '+data);
+	} catch(e) {
+		data = null;
+		err = e;
+	}
+	
+	process.send({
+		result: data,
+		err: err,
+		context: context
+	});
+}",Handle exec requests,https://github.com/arokor/pararr.js/blob/215ddc452e24fd239b42de3997738510d1888135/lib/paworker.js#L34-L62,
+"function getUserGroups(user) {
+  var groups = {};
+
+  if (user && user.permissions) {
+    user.permissions.forEach(function(permission) {
+      var reg = new RegExp('^(get|update|delete)-group-(.+)$');
+      var permissionChunks = reg.exec(permission);
+      if (permissionChunks) {
+        var operation = permissionChunks[1];
+        var groupId = permissionChunks[2];
+
+        if (!groups[groupId])
+          groups[groupId] = [];
+
+        groups[groupId].push(operation);
+      }
+    });
+  }
+
+  return groups;
+}","Gets user permissions by groups.
+
+@example
+
+// Example of user permissions
+['get-group-Jekrn20Rl', 'update-group-Jekrn20Rl', 'delete-group-YldO3Jie3']
+
+// Example of returned groups
+{
+'Jekrn20Rl': ['get', 'update'], // User only has get / update permissions on group 'Jekrn20Rl'
+'YldO3Jie3': ['delete'], // User only has delete permission on group 'YldO3Jie3'
+...
+}
+
+@method getUserGroups
+@private
+@param {Object} user The user to extract groups from
+@return {Object} Groups organized by ids",https://github.com/veo-labs/openveo-api/blob/493a811e9a5ba4d3e14910facaa7452caba1ab38/lib/controllers/ContentController.js#L80-L100,
+"function getUserAuthorizedGroups(user, operation) {
+  var userGroups = getUserGroups(user);
+  var groups = [];
+
+  for (var groupId in userGroups) {
+    if (userGroups[groupId].indexOf(operation) >= 0)
+      groups.push(groupId);
+  }
+
+  return groups;
+}","Gets the list of groups of a user, with authorization on a certain operation.
+
+All user groups with authorization on the operation are returned.
+
+@method getUserAuthorizedGroups
+@private
+@param {Object} user The user
+@param {String} operation The operation (get, update or delete)
+@return {Array} The list of user groups which have authorization on the given operation",https://github.com/veo-labs/openveo-api/blob/493a811e9a5ba4d3e14910facaa7452caba1ab38/lib/controllers/ContentController.js#L113-L123,
+"function ObservableHash(observations) {
+  var enabled = true;
+  var _observers = [];
+  _observers.enabled = true;
+
+  Object.defineProperties(this, {
+    _context: { writable: true, value: this },
+    _observations: { value: observations },
+    _namespaces: { value: [] },
+    _observers: { value: _observers },
+    computedObservers: { value: _observers } // alias to work with the computed system
+  });
+}","An object for storing data to be accessed by an application. Has methods for easily computing and watching data
+changes.
+@param {Observations} observations An instance of the Observations class this has is bound to",https://github.com/chip-js/observations-js/blob/a48b32a648089bc86b502712d78cd0b3f8317d50/src/observable-hash.js#L10-L22,
+"function() {
+    this._observers.enabled = true;
+    this._observers.forEach(this.observersBindHelper.bind(this), this);
+
+    // Set namespaced hashes to the same value
+    this._namespaces.forEach(this.observersStartHelper.bind(this), this);
+  }",Starts the observers watching their values,https://github.com/chip-js/observations-js/blob/a48b32a648089bc86b502712d78cd0b3f8317d50/src/observable-hash.js#L43-L49,
+"function(clearValues) {
+    this._observers.enabled = false;
+    this._observers.forEach(this.observersUnbindHelper.bind(this, clearValues));
+
+    // Set namespaced hashes to the same value
+    this._namespaces.forEach(this.observersStopHelper.bind(this, clearValues), this);
+  }","Stops the observers watching and responding to changes, optionally clearing out the values
+@param {Boolean} clearValues Whether to clear the values out to `undefined` or leave them as-is",https://github.com/chip-js/observations-js/blob/a48b32a648089bc86b502712d78cd0b3f8317d50/src/observable-hash.js#L63-L69,

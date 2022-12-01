@@ -1,0 +1,3469 @@
+code,docstring,url
+"function(reset) {
+      var deferred = DeferredPromise();
+      this.handle('close', deferred);
+      return deferred.promise.then(() => {
+        if (reset) {
+          queues = [];
+          exchanges = [];
+        }
+      });
+    }","Closes connection
+
+@public
+@memberOf ConnectionMachine.prototype
+@returns {Promise} promise that is fulfilled after connection has been closed",https://github.com/LeisureLink/magicbus/blob/0370c38ebb8c7917cfd3894263d734aefc2d3d29/lib/connection-machine.js#L91-L100
+"function delay(millis, obj) {
+	return new Promise((resolve, reject) => {
+
+		let resolveImpl = d => {
+			if (d === null || d === undefined) {
+				resolve(d)
+			} else if (d instanceof Promise || typeof d.then === 'function' && typeof d.catch === 'function') {
+				d.then(resolve).catch(reject)
+			} else if (typeof d === 'function') {
+				resolveImpl(d())
+			} else {
+				resolve(d)
+			}
+		}
+		setTimeout(() => resolveImpl(obj), millis)
+	})
+}","Return a promise which resolves the provided data after specified delay.
+
+@param    {number}	millis - Delay before resolving of the promise
+@param    {promise|function|object}	obj - If promise, it will be resolved/rejected in a delayed manner; if function, it's return value will be resolved. Otherwise the obj is resolved directly.
+
+@return {Promise} - A promise that resolves after millis delay",https://github.com/nanw1103/otherlib/blob/187315e12cd829ddf39a38fcbb38d36f8cd34819/lib/index.js#L11-L27
+"async function retry(func, options) {
+	if (!options.timeoutMs && !options.retry)
+		throw new Error('Invalid argument: either options.timeoutMs or options.retry must be specified')
+	if (options.timeoutMs < 0)
+		throw new Error('Invalid argument: options.timeoutMs < 0')
+	if (options.retry < 0)
+		throw new Error('Invalid argument: options.retry < 0')
+	if (options.intervalMs < 0)
+		throw new Error('Invalid argument: options.intervalMs < 0')
+	if (!options.intervalMs && options.timeoutMs) {
+		options.intervalMs = options.timeoutMs / 60
+		if (options.intervalMs < 10000)
+			options.intervalMs = 10000
+	}
+
+	let filter = options.filter || ((err, ret, _hasError) => _hasError)
+
+	//start of backward compatibility
+	if (options.filterReject || options.filterResolve) {
+		filter = (err, ret, _hasError) => {
+			if (_hasError)
+				return options.filterReject && options.filterReject(err)
+			return options.filterResolve && options.filterResolve(ret)
+		}
+	}
+	//end of backward compatibility
+
+	let start = Date.now()
+
+	let log = options.log || (()=>0)
+	let name = options.name || '<no name>'
+	let n = 0
+	let checkRetry = async (state) => {
+		if (options.retry && ++n > options.retry) {
+			let msg = `RetryTask [${name}] - State=${state}. FAILED: Retry limit reached.`
+			log(msg)
+			throw new Error(msg)
+		}
+		let now = Date.now()
+		if (options.timeoutMs && now - start > options.timeoutMs) {
+			let msg = `RetryTask [${name}] - State=${state}. FAILED: Retry Timeout.`
+			log(msg)
+			throw new Error(msg)
+		}
+
+		let msg = ''
+		if (options.retry) {
+			msg = `${n}/${options.retry}`
+		}
+		if (options.timeoutMs) {
+			let percent = (now - start) / options.timeoutMs * 100 | 0
+			if (options.retry)
+				msg += ', '
+			msg += `timeout ${percent}%`
+		}
+		log(`RetryTask [${name}] - State=${state}. Retry=${msg}...`)
+		await delay(options.intervalMs)
+	}
+
+	let ret
+	let err
+	let _hasError
+	for (;;) {
+		ret = undefined
+		err = undefined
+		_hasError = undefined
+		try {
+			ret = await func()
+		} catch (e) {
+			err = e
+			_hasError = true
+		}
+
+		if (await filter(err, ret, _hasError)) {
+			await checkRetry(err || ret)
+			continue
+		}
+
+		if (err)
+			throw err
+		return ret
+	}
+}","Retry the specific task conditionally
+
+@param    {function}	func
+@param    {object}	options
+@property {function}	options.filter		- A callback filter to control retry, based on result or error.
+Retry on true return. The default filter is: (err, ret)=>err
+@property {number}	options.retry		- max retry attempt. 0 indicates no limit
+@property {number}	options.timeoutMs	- total timeout limit. 0 indicates no total timeout
+@property {number}	options.intervalMs	- wait before retry
+@property {function}	[options.log]		- optionally, log the details
+@property {string}	[options.name]		- name shown in log
+
+@return {Promise}",https://github.com/nanw1103/otherlib/blob/187315e12cd829ddf39a38fcbb38d36f8cd34819/lib/index.js#L44-L126
+"function deepMerge(target, ...sources) {
+	let src
+	while (true) {
+		if (!sources.length)
+			return target
+		src = sources.shift()
+		if (src)
+			break
+	}
+
+	for (let k in src) {
+
+		let v = src[k]
+		let existing = target[k]
+
+		if (typeof v === 'object') {
+			if (v === null) {
+				target[k] = null
+			} else if (Array.isArray(v)) {
+				target[k] = v.slice()
+			} else {
+				if (typeof existing !== 'object')
+					target[k] = deepMerge({}, v)
+				else
+					deepMerge(existing, v)
+			}
+		} else {
+			//v is not object/array
+			target[k] = v
+		}
+	}
+
+	return deepMerge(target, ...sources)
+}","Like Object.assign, but works in a deep manner.
+
+@param	{object}	target - Target object to be merged into
+@param	{object}	sources - Source objects to be merged onto target
+
+@return	{object} The target object",https://github.com/nanw1103/otherlib/blob/187315e12cd829ddf39a38fcbb38d36f8cd34819/lib/index.js#L244-L277
+"function primitive(str) {
+	if (typeof str !== 'string')
+		return str
+	if (str === 'null')
+		return null
+	if (str === 'undefined')
+		return undefined
+	if (str === 'true')
+		return true
+	if (str === 'false')
+		return false
+	if (str === 'true')
+		return true
+	if (str === 'NaN')
+		return NaN
+	//if (str === 'Infinity')
+	//	return Number.POSITIVE_INFINITY
+	let ret
+	if (str.indexOf('.') >= 0)
+		ret = Number.parseFloat(str)
+	else
+		ret = Number.parseInt(str)
+	if (!Number.isNaN(ret))
+		return ret
+	return str
+}","Converting string to javascript primitive types: Boolean, Null, Undefined, Number
+@param	{object}	str - target string convert from
+@return	{object}	The converted primitive, if possible. Otherwise the original string",https://github.com/nanw1103/otherlib/blob/187315e12cd829ddf39a38fcbb38d36f8cd34819/lib/index.js#L284-L309
+"function deepGet(obj, deepKey, defaultVal) {
+	let parts = deepKey.split('.')
+	let t = obj
+	for (let k of parts) {
+		if (typeof t !== 'object' || t === null || !(k in t))
+			return defaultVal
+		t = t[k]
+	}
+	return t
+}","Deep get property from object.
+E.g. deepGet({a:{b:1}}, 'a.b') === 1
+
+@param	{object}	obj        - Target object to get value from
+@param	{object}	deepKey    - Dot separated key names
+@param	{object}	defaultVal - Default value, if the property does not exist
+@return	{object}	The deep property, or undefined if any part of the key does not exist",https://github.com/nanw1103/otherlib/blob/187315e12cd829ddf39a38fcbb38d36f8cd34819/lib/index.js#L320-L329
+"function deepSet(obj, deepKey, v) {
+	if (typeof obj !== 'object')
+		throw new Error(`deepSet failure. Not an object. type=${typeof obj}, key=${deepKey}`)
+	
+	if (typeof obj === null)
+		throw new Error(`deepSet failure. Setting into null object. key=${deepKey}`)
+
+	let parts = deepKey.split('.')
+	let t = obj
+
+	for (let i = 0; i < parts.length; i++) {
+		let k = parts[i]
+
+		if (i === parts.length - 1) {
+			t[k] = v
+			break
+		}
+
+		if (t[k] === undefined || t[k] === null) {
+			t[k] = {}
+		} else if (typeof t[k] !== 'object') {
+			throw new Error(`deepSet failure. Not an object. key=${deepKey}, part=${k}`)
+		}
+		t = t[k]
+	}
+	return obj
+}","Deep set property into object.
+E.g. deepSet({}, 'a.b', 1) === {a:{b:1}}
+
+@param	{object}	obj        - Target object to set value into
+@param	{object}	deepKey    - Dot separated key names
+@param	{object}	v          - The value to be set
+@return	{object}	The passed-in obj",https://github.com/nanw1103/otherlib/blob/187315e12cd829ddf39a38fcbb38d36f8cd34819/lib/index.js#L340-L366
+"function(x,y){
+        var _lsw = (x&0xFFFF)+(y&0xFFFF),
+            _msw = (x>>16)+(y>>16)+(_lsw>>16);
+        return (_msw<<16)|(_lsw&0xFFFF);
+    }","/*
+Add integers, wrapping at 2^32. This uses 16-bit operations internally
+to work around bugs in some JS interpreters.",https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/util/encode/md5.js#L27-L31
+"function(q,a,b,x,s,t){
+        return __add(__rol(__add(__add(a,q),__add(x,t)),s),b);
+    }","/*
+These functions implement the four basic operations the algorithm uses.",https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/util/encode/md5.js#L124-L126
+"function(x,y){
+        x[y>>5] |= 0x80<<((y)%32);
+        x[(((y+64)>>>9)<<4)+14] = y;
+        var a = 1732584193,
+            b = -271733879,
+            c = -1732584194,
+            d = 271733878;
+        for(var i=0,l=x.length,_oa,_ob,_oc,_od;i<l;i+=16){
+            _oa = a; _ob = b; _oc = c; _od = d;
+            a = __md5ff(a, b, c, d, x[i+ 0], 7 , -680876936);
+            d = __md5ff(d, a, b, c, x[i+ 1], 12, -389564586);
+            c = __md5ff(c, d, a, b, x[i+ 2], 17,  606105819);
+            b = __md5ff(b, c, d, a, x[i+ 3], 22, -1044525330);
+            a = __md5ff(a, b, c, d, x[i+ 4], 7 , -176418897);
+            d = __md5ff(d, a, b, c, x[i+ 5], 12,  1200080426);
+            c = __md5ff(c, d, a, b, x[i+ 6], 17, -1473231341);
+            b = __md5ff(b, c, d, a, x[i+ 7], 22, -45705983);
+            a = __md5ff(a, b, c, d, x[i+ 8], 7 ,  1770035416);
+            d = __md5ff(d, a, b, c, x[i+ 9], 12, -1958414417);
+            c = __md5ff(c, d, a, b, x[i+10], 17, -42063);
+            b = __md5ff(b, c, d, a, x[i+11], 22, -1990404162);
+            a = __md5ff(a, b, c, d, x[i+12], 7 ,  1804603682);
+            d = __md5ff(d, a, b, c, x[i+13], 12, -40341101);
+            c = __md5ff(c, d, a, b, x[i+14], 17, -1502002290);
+            b = __md5ff(b, c, d, a, x[i+15], 22,  1236535329);
+            a = __md5gg(a, b, c, d, x[i+ 1], 5 , -165796510);
+            d = __md5gg(d, a, b, c, x[i+ 6], 9 , -1069501632);
+            c = __md5gg(c, d, a, b, x[i+11], 14,  643717713);
+            b = __md5gg(b, c, d, a, x[i+ 0], 20, -373897302);
+            a = __md5gg(a, b, c, d, x[i+ 5], 5 , -701558691);
+            d = __md5gg(d, a, b, c, x[i+10], 9 ,  38016083);
+            c = __md5gg(c, d, a, b, x[i+15], 14, -660478335);
+            b = __md5gg(b, c, d, a, x[i+ 4], 20, -405537848);
+            a = __md5gg(a, b, c, d, x[i+ 9], 5 ,  568446438);
+            d = __md5gg(d, a, b, c, x[i+14], 9 , -1019803690);
+            c = __md5gg(c, d, a, b, x[i+ 3], 14, -187363961);
+            b = __md5gg(b, c, d, a, x[i+ 8], 20,  1163531501);
+            a = __md5gg(a, b, c, d, x[i+13], 5 , -1444681467);
+            d = __md5gg(d, a, b, c, x[i+ 2], 9 , -51403784);
+            c = __md5gg(c, d, a, b, x[i+ 7], 14,  1735328473);
+            b = __md5gg(b, c, d, a, x[i+12], 20, -1926607734);
+            a = __md5hh(a, b, c, d, x[i+ 5], 4 , -378558);
+            d = __md5hh(d, a, b, c, x[i+ 8], 11, -2022574463);
+            c = __md5hh(c, d, a, b, x[i+11], 16,  1839030562);
+            b = __md5hh(b, c, d, a, x[i+14], 23, -35309556);
+            a = __md5hh(a, b, c, d, x[i+ 1], 4 , -1530992060);
+            d = __md5hh(d, a, b, c, x[i+ 4], 11,  1272893353);
+            c = __md5hh(c, d, a, b, x[i+ 7], 16, -155497632);
+            b = __md5hh(b, c, d, a, x[i+10], 23, -1094730640);
+            a = __md5hh(a, b, c, d, x[i+13], 4 ,  681279174);
+            d = __md5hh(d, a, b, c, x[i+ 0], 11, -358537222);
+            c = __md5hh(c, d, a, b, x[i+ 3], 16, -722521979);
+            b = __md5hh(b, c, d, a, x[i+ 6], 23,  76029189);
+            a = __md5hh(a, b, c, d, x[i+ 9], 4 , -640364487);
+            d = __md5hh(d, a, b, c, x[i+12], 11, -421815835);
+            c = __md5hh(c, d, a, b, x[i+15], 16,  530742520);
+            b = __md5hh(b, c, d, a, x[i+ 2], 23, -995338651);
+            a = __md5ii(a, b, c, d, x[i+ 0], 6 , -198630844);
+            d = __md5ii(d, a, b, c, x[i+ 7], 10,  1126891415);
+            c = __md5ii(c, d, a, b, x[i+14], 15, -1416354905);
+            b = __md5ii(b, c, d, a, x[i+ 5], 21, -57434055);
+            a = __md5ii(a, b, c, d, x[i+12], 6 ,  1700485571);
+            d = __md5ii(d, a, b, c, x[i+ 3], 10, -1894986606);
+            c = __md5ii(c, d, a, b, x[i+10], 15, -1051523);
+            b = __md5ii(b, c, d, a, x[i+ 1], 21, -2054922799);
+            a = __md5ii(a, b, c, d, x[i+ 8], 6 ,  1873313359);
+            d = __md5ii(d, a, b, c, x[i+15], 10, -30611744);
+            c = __md5ii(c, d, a, b, x[i+ 6], 15, -1560198380);
+            b = __md5ii(b, c, d, a, x[i+13], 21,  1309151649);
+            a = __md5ii(a, b, c, d, x[i+ 4], 6 , -145523070);
+            d = __md5ii(d, a, b, c, x[i+11], 10, -1120210379);
+            c = __md5ii(c, d, a, b, x[i+ 2], 15,  718787259);
+            b = __md5ii(b, c, d, a, x[i+ 9], 21, -343485551);
+            a = __add(a, _oa);
+            b = __add(b, _ob);
+            c = __add(c, _oc);
+            d = __add(d, _od);
+        }   return [a, b, c, d];
+    }","/*
+Calculate the MD5 of an array of little-endian words, and a bit length",https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/util/encode/md5.js#L142-L220
+"function(_key,_data){
+        var _bkey = __str2bin(_key,!0);
+        if (_bkey.length>16)
+            _bkey = __data2md5(_bkey,_key.length*__chrsz);
+
+        var _ipad = Array(16),
+            _opad = Array(16);
+        for(var i=0;i<16;i++){
+            _ipad[i] = _bkey[i]^0x36363636;
+            _opad[i] = _bkey[i]^0x5C5C5C5C;
+        }
+
+        var _hash = __data2md5(_ipad.concat(
+                               __str2bin(_data,!0)),
+                               512+_data.length*__chrsz);
+        return __data2md5(_opad.concat(_hash),512+128);
+    }","/*
+Calculate the HMAC-MD5, of a key and some data",https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/util/encode/md5.js#L224-L240
+"function(x,_length){
+        /* append padding */
+        x[_length>>5] |= 0x80<<(24-_length%32);
+        x[((_length+64>>9)<<4)+15] = _length;
+        var w = Array(80),  a = 1732584193,
+            b = -271733879, c = -1732584194,
+            d = 271733878,  e = -1009589776;
+        for(var i=0,l=x.length,_olda,
+            _oldb,_oldc,_oldd,_olde;i<l;i+=16){
+            _olda = a; _oldb = b;
+            _oldc = c; _oldd = d; _olde = e;
+            for(var j=0;j<80;j++){
+                w[j] = j<16 ? x[i+j]
+                            : __rol(w[j-3]^w[j-8]^w[j-14]^w[j-16],1);
+                var t = __add(__add(__rol(a,5),
+                              __sha1ft(j,b,c,d)),
+                              __add(__add(e,w[j]),
+                              __sha1kt(j)));
+                e = d; d = c;
+                c = __rol(b,30);
+                b = a; a = t;
+            }
+            a = __add(a,_olda);
+            b = __add(b,_oldb);
+            c = __add(c,_oldc);
+            d = __add(d,_oldd);
+            e = __add(e,_olde);
+        }
+        return [a,b,c,d,e];
+    }","/*
+Calculate the SHA-1 of an array of big-endian words, and a bit length",https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/util/encode/md5.js#L244-L273
+"function connect(uri, options, singleNodeConnection, cb) {
+  if(singleNodeConnection){
+    return _singleNodeConnect(uri, options, cb)
+  } else {
+    // Don't call DB.connect() as it defers to the native Db.connect(), which
+    // doesn't use MongoClient
+    return syncOrAsync(
+      MongoClient, 'connect', [uri, options], function(db) {
+        return new DB(db)
+      }, cb
+    )
+  }
+}","connect
+
+@param {!String} uri
+@param {Object=} options
+@param {Boolean} singleNodeConnection
+@param {function} [cb=undefined] execute asynchronously if present (signature: cb(err, result))
+@return {Object} returns the database object
+
+Options are as specified for MongoClient.connect
+http://mongodb.github.io/node-mongodb-native/driver-articles/mongoclient.html#mongoclient-connect-options
+
+Unfortunately, MongoClient.connect will always return a connection to the
+master node if it can find one.  In order to connect to specific node, set
+singleNodeConnection to true and a different connection strategy will be
+used. singleNodeConnections cannot recognize URI options.",https://github.com/carbon-io/leafnode/blob/d372cc3eda5e3bc6c9eea23d4b227f4b65d02275/lib/leafnode.js#L31-L43
+"function _singleNodeConnect(uri, options, cb){
+  var uriObj = mongodbUri.parse(uri)
+  if (uriObj.hosts.length > 1) {
+    var err = new Error(""Multiple hosts found for single node connection"")
+    if (cb) {
+      return cb(err)
+    }
+    throw err
+  }
+  var host = uriObj.hosts[0]
+  var serverOptions = options[""server""] || null
+  var dbOptions = options[""db""] || options[""database""] || null
+
+  var server = new Server(host.host, host.port, serverOptions)
+  var db = new NativeDB(uriObj.database, server, dbOptions)
+
+  var seq = async.seq(
+    function(db, cb) {
+      return db.open(cb)
+    },
+    function(db, cb) {
+      if (uriObj.username && uriObj.password) {
+        return db.authenticate(uriObj.username, uriObj.password, {}, function(err, authed) {
+          return cb(err ? new Error(""Unable to authenticate"") : undefined, db)
+        })
+      }
+      return cb(undefined, db)
+    })
+
+  return syncOrAsync(undefined, seq, [db], function(db) {
+      return new DB(db)
+  }, cb)
+}","_singleNodeConnect
+
+@param {!String} uri
+@param {Object=} options
+@param {function} [cb=undefined] execute asynchronously if present (signature: cb(err, result))
+
+Options are as specified for MongoClient.connect
+http://mongodb.github.io/node-mongodb-native/driver-articles/mongoclient.html#mongoclient-connect-options
+
+MongoClient.connect will return a Master connection if available, regardless of the node specified.
+The _singleNodeConnect strategy ensures that a connection to the specified node is returned,
+not necessarily Master.
+
+This connection strategy cannot recognize URI options.",https://github.com/carbon-io/leafnode/blob/d372cc3eda5e3bc6c9eea23d4b227f4b65d02275/lib/leafnode.js#L62-L94
+"function restoreEventListenerImplementation() {
+    global.Element.prototype.addEventListener = nativeAddEventListener;
+    global.Element.prototype.removeEventListener = nativeRemoveEventListener;
+    global.document.addEventListener = nativeAddEventListener;
+    global.document.removeEventListener = nativeRemoveEventListener;
+  }",Not public for now,https://github.com/urturn/urturn-expression-api/blob/009a272ee670dbbe5eefb5c070ed827dd778bb07/lib/expression-api/compat.js#L130-L135
+"function BaseClient(opts) {
+  this.opts = opts || {};
+  var self = this;
+  this.sendQConcurrency = opts.sendQueueConcurrency || 5;
+  this.sendQ = async.queue(function(data, cb) {
+    self.doSend(data, cb);
+  }, this.sendQConcurrency);
+}",A base implementation for all the clients,https://github.com/feedhenry/fh-component-metrics/blob/c97a1a82ff0144f2a7c2abecbc22084fade1cbc8/lib/clients/base.js#L6-L13
+"function(_style){
+            var _list  = _style.split(':'),
+                _prop  = _list[0],
+                _value = _list[1],
+                _node  = this.__node;
+            // 需要解析=号
+            if(_value.indexOf('=') > -1){
+                var _a = parseInt(_e._$getStyle(_node,_prop))||0;
+                var _b = parseInt(_value.split('=')[1]);
+                if(_value.indexOf('+') > -1)
+                    _value = _a + _b;
+                else
+                    _value = _a - _b;
+            }
+            // 需要加单位
+            if(_h.__doCheckProp(_prop)){
+                if(_value.toString().indexOf('px') < 0)
+                    _value += 'px';
+            }
+            this.__propMap[_prop] = _value;
+        }",根据属性的拼写规则，做适当的调整,https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/util/effect/effect.js#L189-L209
+"function(_index){
+            if(!this.__transition[_index])
+                return '';
+            var _rule = this.__transition[_index],
+                _t = _rule.duration + _rule.delay;
+            if( _t > this.__sumtime){
+                this.__lastProp = {};
+                this.__sumtime = _t;
+                this.__lastProp[_rule.property] = _rule.property;
+            }else if(_t == this.__sumtime){
+                this.__lastProp[_rule.property] = _rule.property;
+            }
+            return _rule.property + ' ' + _rule.duration + 's ' + _rule.timing + ' ' + _rule.delay + 's,';
+        }",解析动画的规则,https://github.com/Mammut-FE/nejm/blob/dfc09ac66a8d67620a7aea65e34d8a179976b3fb/src/util/effect/effect.js#L211-L224
+"function ensureObservers(obj, options) {
+  if (!obj.computedObservers) {
+    Object.defineProperty(obj, 'computedObservers', { value: [] });
+    obj.computedObservers.enabled = (!options || options.enabled !== false);
+
+    // Restarts observing changes
+    obj.computedObservers.enable = function() {
+      if (!this.enabled) {
+        this.enabled = true;
+        this.forEach(function(observer) {
+          observer.bind(options && options.context || obj);
+        });
+      }
+    };
+
+    // Stops observing changes and resets all computed properties to undefined
+    obj.computedObservers.disable = function() {
+      if (this.enabled) {
+        this.enabled = false;
+        this.forEach(function(observer) {
+          observer.unbind();
+          observer.sync();
+        });
+      }
+    };
+  }
+  return obj;
+}","Ensures the observers array exists on an object, creating it if not and adding disable/enable functions to enable and
+disable observing.
+@param {Object} obj The object which ought to have an observers array on it
+@param {Object} options Options for this computed object:
+* enabled {Boolean} Whether to enable this computed object. Default is true.
+@return {Object} The `obj` that was passed in",https://github.com/chip-js/observations-js/blob/a48b32a648089bc86b502712d78cd0b3f8317d50/src/computed.js#L135-L162
+"async function compareString (filename, expectedContents) {
+  try {
+    const actualContents = await fs.readFile(filename, { encoding: 'utf8' })
+    return actualContents !== expectedContents
+  } catch (err) {
+    return handleError(err)
+  }
+}","Compares a string with a file contents. Returns true, if they differ or the file does not exist.
+@param {string} filename the file name
+@param {string} expectedContents the file contents
+@returns {Promise<boolean>|boolean}
+@private",https://github.com/bootprint/customize-write-files/blob/af77ce78b5196f40ce90670bfdb6e1e7e496a415/lib/changed.js#L51-L58
+"async function compareBuffer (filename, expectedContents) {
+  try {
+    const actualContents = await fs.readFile(filename)
+    return !expectedContents.equals(actualContents)
+  } catch (err) {
+    return handleError(err)
+  }
+}","Compares a buffer with a file contents. Returns true, if they differ or the file does not exist.
+
+@param {string} filename the file name
+@param {Buffer} expectedContents the file contents
+@returns {Promise<boolean>|boolean}
+@private",https://github.com/bootprint/customize-write-files/blob/af77ce78b5196f40ce90670bfdb6e1e7e496a415/lib/changed.js#L68-L75
+"async function compareStream (filename, expectedContents) {
+  try {
+    const actualStream = fs.createReadStream(filename)
+    const result = await streamCompare(expectedContents, actualStream, {
+      abortOnError: true,
+      compare: (a, b) => {
+        return Buffer.compare(a.data, b.data) !== 0
+      }
+    })
+    return result
+  } catch (err) {
+    return handleError(err)
+  }
+}","Compares a readable stream with a file contents. Returns true, if they differ or the file does not exist.
+@param {string} filename the file name
+@param {Stream} expectedContents the file contents
+@returns {Promise<boolean>|boolean}
+@private",https://github.com/bootprint/customize-write-files/blob/af77ce78b5196f40ce90670bfdb6e1e7e496a415/lib/changed.js#L84-L97
+"function Client(dbPath, resourceDir, opts) {
+    // in case we need the client but don't want to build a resource dir.
+    if(resourceDir) mkdirp.sync(resourceDir);
+    opts = opts || {compression_method: 'tar'};
+
+    const schemaPath = path.normalize(path.join(__dirname, './schema.sqlite'));
+    const helper = new SqliteHelper(schemaPath, dbPath);
+    const library = new Library(helper);
+
+    /**
+     * Provides read only access to the index via synchronous methods
+     *
+     * @type {{}}
+     */
+    let indexSync = library.public_getters;
+
+    /**
+     * Provides read only access to the index
+     *
+     * @type {{}}
+     */
+    let index = {};
+    for(let method in library.public_getters) {
+        if(library.public_getters.hasOwnProperty(method)) {
+            index[method] = promiseUtils.promisify(library.public_getters[method]);
+        }
+    }
+
+    /**
+     * Downloads the chunks for a project
+     * @param project {{}}
+     */
+    const downloadChunks = function(project) {
+        if(project.slug.toLowerCase() === 'obs'
+            || project.slug.toLowerCase() === 'bible-obs'
+            || project.slug.toLowerCase() === 'bible'
+            || !project.chunks_url) return Promise.resolve();
+
+
+        return request.read(project.chunks_url)
+            .then(function(response) {
+                // consume chunk data
+                if(response.status !== 200) return Promise.reject(response);
+
+                let data;
+                try {
+                    data = JSON.parse(response.data);
+                } catch(err) {
+                    console.log(project);
+                    return Promise.reject(err);
+                }
+
+                try {
+                    let language_id = library.addSourceLanguage({
+                        slug: 'en',
+                        name: 'English',
+                        direction: 'ltr'
+                    });
+
+                    // TODO: retrieve the correct versification name(s) from the source language
+                    let versification_id = library.addVersification({
+                        slug: 'en-US',
+                        name: 'American English'
+                    }, language_id);
+
+
+                    if (versification_id > 0) {
+                        for (let chunk of data) {
+                            library.addChunkMarker({
+                                chapter: padSlug(chunk.chp, 2),
+                                verse: padSlug(chunk.firstvs, 2)
+                            }, project.slug, versification_id);
+                        }
+                    }
+                } catch (err) {
+                    return Promise.reject(err);
+                }
+            });
+    };
+
+    /**
+     * Downloads the source languages for a project
+     * @param project {{}}
+     * @returns {Promise}
+     */
+    const downloadSourceLanguages = function(project) {
+        return request.read(project.lang_catalog)
+            .then(function(response) {
+                // consume language data
+                if(response.status !== 200) return Promise.reject(response);
+
+                let data;
+                try {
+                    data = JSON.parse(response.data);
+                } catch(err) {
+                    return Promise.reject(err);
+                }
+
+                let projects = [];
+                for(let language of data) {
+                    try {
+                        let language_id = library.addSourceLanguage({
+                            slug: language.language.slug,
+                            name: language.language.name,
+                            direction: language.language.direction
+                        });
+
+                        project.categories = _.map(project.meta, function (names, slug, index) {
+                            return {name: names[index], slug: slug};
+                        }.bind(this, language.project.meta));
+
+                        if (project.slug.toLowerCase() !== 'obs') {
+                            project.chunks_url = 'https://api.unfoldingword.org/bible/txt/1/' + project.slug + '/chunks.json';
+                        }
+
+                        let projectId = library.addProject({
+                            slug: project.slug,
+                            name: language.project.name,
+                            desc: language.project.desc,
+                            icon: project.icon,
+                            sort: project.sort,
+                            chunks_url: project.chunks_url,
+                            categories: project.categories,
+                        }, language_id);
+
+                        projects.push({
+                            id: projectId,
+                            chunks_url: project.chunks_url,
+                            slug: project.slug,
+                            resourceUrl: language.res_catalog,
+                            source_language_slug: language.language.slug,
+                            source_language_id: language_id
+                        });
+                    } catch (err) {
+                        return Promise.reject(err);
+                    }
+                }
+
+                // TRICKY: we just flipped the data hierarchy from project->lang to lang->project for future compatibility
+                return projects;
+            });
+    };
+
+    /**
+     * Downloads the resources for a source language.
+     *
+     * @param project {{}}
+     * @returns {Promise}
+     */
+    const downloadSourceResources = function(project) {
+        return request.read(project.resourceUrl)
+            .then(function(response) {
+                // consume resource data
+                if(response.status !== 200) return Promise.reject(response);
+
+                let data;
+                try {
+                    data = JSON.parse(response.data);
+                } catch(err) {
+                    return Promise.reject(err);
+                }
+
+                for(let resource of data) {
+                    try {
+                        resource.slug = resource.slug.toLowerCase();
+                        switch (resource.slug) {
+                            case 'obs':
+                            case 'ulb':
+                                resource.status.translate_mode = 'all';
+                                break;
+                            default:
+                                resource.status.translate_mode = 'gl';
+                        }
+
+                        resource.status.pub_date = resource.status.publish_date;
+                        resource.translation_words_assignments_url = resource.tw_cat;
+                        resource.type = 'book';
+                        resource.formats = [{
+                            package_version: rc.tools.spec.version,
+                            mime_type: rc.tools.typeToMime('book'),
+                            modified_at: resource.date_modified,
+                            imported: 0,
+                            url: resource.source
+                        }];
+                        library.addResource(resource, project.id);
+
+                        // coerce notes to resource
+                        let helpResource = {
+                            slug: 'tn',
+                            name: 'translationNotes',
+                            type: 'help',
+                            status: resource.status,
+                            formats: [{
+                                package_version: rc.tools.spec.version,
+                                mime_type: rc.tools.typeToMime('help'),
+                                modified_at: resource.date_modified,
+                                imported: 0,
+                                url: resource.notes
+                            }]
+                        };
+                        helpResource.status.translate_mode = 'gl';
+                        helpResource.status.source_translations = [{
+                            language_slug: project.source_language_slug,
+                            resource_slug: 'tn',
+                            version: resource.status.version
+                        }];
+                        if (resource.notes) {
+                            library.addResource(helpResource, project.id);
+                        }
+
+                        // coerce questions to resource
+                        helpResource.slug = 'tq';
+                        helpResource.name = 'translationQuestions';
+                        helpResource.formats = [{
+                            package_version: rc.tools.spec.version,
+                            mime_type: rc.tools.typeToMime('help'),
+                            modified_at: resource.date_modified,
+                            imported: 0,
+                            url: resource.checking_questions
+                        }];
+                        helpResource.status.source_translations = [{
+                            language_slug: project.source_language_slug,
+                            resource_slug: 'tq',
+                            version: resource.status.version
+                        }];
+                        if (resource.checking_questions) {
+                            library.addResource(helpResource, project.id);
+                        }
+
+                        // add words project (this is insert/update so it will only be added once)
+                        // TRICKY: obs tw has not been unified with bible tw yet so we add it as separate project.
+                        let wordsProjectId = library.addProject({
+                            slug: project.slug === 'obs' ? 'bible-obs' : 'bible',
+                            name: 'translationWords' + (project.slug === 'obs' ? ' OBS' : ''),
+                            desc: '',
+                            icon: '',
+                            sort: 100,
+                            chunks_url: '',
+                            categories: []
+                        }, project.source_language_id);
+
+                        // add resource to words project
+                        let dictResource = _.clone(helpResource);
+                        dictResource.slug = 'tw';
+                        dictResource.name = 'translationWords';
+                        dictResource.type = 'dict';
+                        dictResource.formats = [{
+                            package_version: rc.tools.spec.version,
+                            mime_type: rc.tools.typeToMime('dict'),
+                            modified_at: resource.date_modified,
+                            imported: 0,
+                            url: resource.terms
+                        }];
+                        dictResource.status.source_translations = [{
+                            language_slug: project.source_language_slug,
+                            resource_slug: 'tw',
+                            version: resource.status.version
+                        }];
+                        if (resource.terms) {
+                            library.addResource(dictResource, wordsProjectId);
+                        }
+                    } catch (err) {
+                        return Promise.reject(err);
+                    }
+                }
+            });
+    };
+
+    /**
+     * Injects the global catalogs since they are missing from api v2.
+     *
+     * @returns {Promise}
+     */
+    const injectGlobalCatalogs = function() {
+        library.addCatalog({
+            slug: 'langnames',
+            url: 'https://td.unfoldingword.org/exports/langnames.json',
+            modified_at: 0
+        });
+        library.addCatalog({
+            slug: 'new-language-questions',
+            url: 'https://td.unfoldingword.org/api/questionnaire/',
+            modified_at: 0
+        });
+        library.addCatalog({
+            slug: 'temp-langnames',
+            url: 'https://td.unfoldingword.org/api/templanguages/',
+            modified_at: 0
+        });
+        // TRICKY: this catalog should always be indexed after langnames and temp-langnames otherwise the linking will fail!
+        library.addCatalog({
+            slug: 'approved-temp-langnames',
+            url: 'https://td.unfoldingword.org/api/templanguages/assignment/changed/',
+            modified_at: 0
+        });
+        return Promise.resolve();
+    };
+
+    /**
+     * Updates all of the source content.
+     * This includes languages, projects, resources, ta
+     *
+     * @param url
+     * @param onProgress
+     */
+    const updateSources = function(url, onProgress) {
+        return updateResources(url, onProgress)
+            .then(function() {
+                return updateTA(onProgress);
+            });
+    };
+
+    /**
+     * Indexes the languages, projects, and resources from the api
+     *
+     * @param url {string} the entry resource api catalog
+     * @param onProgress {function} an optional progress listener. This should receive progress id, total, completed
+     * @returns {Promise}
+     */
+    const updateResources = function(url, onProgress) {
+        onProgress = onProgress || function(){};
+        return injectGlobalCatalogs()
+            .then(function() {
+                library.commit();
+               return request.read(url);
+            })
+            .then(function(response) {
+                // disable saves for better performance
+                library.autosave(false);
+                // index projects and source languages
+                if (response.status !== 200) return Promise.reject(response);
+
+                let projects;
+                try {
+                    projects = JSON.parse(response.data);
+                } catch (err) {
+                    return Promise.reject(err);
+                }
+
+                return promiseUtils.chain(downloadSourceLanguages, function(err, data) {
+                    if(err instanceof Error) return Promise.reject(err);
+                    console.log(err);
+                    return false;
+                }, {compact: true, onProgress: onProgress.bind(null, 'projects')})(projects);
+            })
+            .then(function(projects) {
+                // index resources
+                library.commit();
+                if(!projects) return Promise.reject('No projects found');
+                let list = [];
+                for(let project of projects) {
+                    for(let localizedProject of project) {
+                        list.push({
+                            id: localizedProject.id,
+                            slug: localizedProject.slug,
+                            source_language_id: localizedProject.source_language_id,
+                            resourceUrl: localizedProject.resourceUrl
+                        });
+                    }
+                }
+
+                return promiseUtils.chain(downloadSourceResources, function(err, data) {
+                    if(err instanceof Error) return Promise.reject(err);
+                    console.log(err);
+                    return false;
+                }, {compact: true, onProgress: onProgress.bind(null, 'resources')})(list);
+            }).then(function() {
+                // keep the promise args clean
+                library.commit();
+                library.autosave(true);
+                return Promise.resolve();
+            }).catch(function(err) {
+                library.autosave(true);
+                return Promise.reject(err);
+            });
+    };
+
+    /**
+     * Downloads the chunks for all projects
+     * @param onProgress
+     * @returns {Promise.<>}
+     */
+    const updateChunks = function(onProgress) {
+        onProgress = onProgress || function() {};
+        let projects = library.public_getters.getProjects();
+        library.autosave(false);
+        return promiseUtils.chain(downloadChunks, function(err, data) {
+            if(err instanceof Error) return Promise.reject(err);
+            console.log(err);
+            return false;
+        }, {compact: true, onProgress: onProgress.bind(null, 'chunks')})(projects)
+            .then(function() {
+                library.commit();
+                library.autosave(true);
+                return Promise.resolve();
+            })
+            .catch(function(err) {
+                library.autosave(true);
+                return Promise.reject(err);
+            });
+    };
+
+    /**
+     * Downloads the tA projects
+     * @param onProgress
+     * @returns {Promise.<>}
+     */
+    const updateTA = function(onProgress) {
+        onProgress = onProgress || function() {};
+        library.autosave(false);
+        let modules_urls = [
+            'https://api.unfoldingword.org/ta/txt/1/en/audio_2.json',
+            'https://api.unfoldingword.org/ta/txt/1/en/checking_1.json',
+            'https://api.unfoldingword.org/ta/txt/1/en/checking_2.json',
+            'https://api.unfoldingword.org/ta/txt/1/en/gateway_3.json',
+            'https://api.unfoldingword.org/ta/txt/1/en/intro_1.json',
+            'https://api.unfoldingword.org/ta/txt/1/en/process_1.json',
+            'https://api.unfoldingword.org/ta/txt/1/en/translate_1.json',
+            'https://api.unfoldingword.org/ta/txt/1/en/translate_2.json'
+        ];
+        return promiseUtils.chain(downloadTA, function(err, data) {
+            if(err instanceof Error) return Promise.reject(err);
+            console.log(err);
+            return false;
+        }, {compact: true, onProgress: onProgress.bind(null, 'ta')})(modules_urls)
+            .then(function() {
+                library.commit();
+                library.autosave(true);
+                return Promise.resolve();
+            })
+            .catch(function(err) {
+                library.autosave(true);
+                return Promise.reject(err);
+            });
+    };
+
+    const downloadTA = function(url) {
+        return request.read(url)
+            .then(function(response) {
+                if(response.status !== 200) return Promise.reject(response);
+
+                try {
+                    // add language (right now only english)
+                    let languageId = library.addSourceLanguage({
+                        slug: 'en',
+                        name: 'English',
+                        direction: 'ltr'
+                    });
+
+                    let data;
+                    try {
+                        data = JSON.parse(response.data);
+                    } catch (err) {
+                        return Promise.reject(err);
+                    }
+
+                    // add project
+                    let projectId = library.addProject({
+                        slug: 'ta-' + data.meta.manual.replace(/\_/g, '-'),
+                        name: data.meta.manual.charAt(0).toUpperCase() + data.meta.manual.slice(1) + ' Manual',
+                        desc: '',
+                        icon: '',
+                        sort: 0,
+                        chunks_url: '',
+                        categories: [{slug: 'ta', name: 'translationAcademy'}]
+                    }, languageId);
+
+                    // add resource
+                    let resource = {
+                        slug: 'vol' + data.meta.volume,
+                        name: 'Volume ' + data.meta.volume,
+                        type: 'man',
+                        status: data.meta.status,
+                        formats: [{
+                            package_version: rc.tools.spec.version,
+                            mime_type: rc.tools.typeToMime('man'),
+                            modified_at: data.meta.mod,
+                            imported: 0,
+                            url: url
+                        }]
+                    };
+                    resource.status.translate_mode = 'gl';
+                    library.addResource(resource, projectId);
+                } catch (err) {
+                    return Promise.reject(err);
+                }
+            });
+    };
+
+    /**
+     * Updates all of the global catalogs
+     * @param onProgress
+     * @returns {Promise.<>}
+     */
+    const updateCatalogs = function(onProgress) {
+        const errorHandler = function(err) {
+            if(err instanceof Error) {
+                return Promise.reject(err);
+            } else {
+                return Promise.resolve();
+            }
+        };
+
+        // TRICKY: the language catalogs are dependent so we must run them in order
+        return updateCatalog('langnames', onProgress)
+            .catch(errorHandler)
+            .then(function(response) {
+                return updateCatalog('temp-langnames', onProgress);
+            })
+            .catch(errorHandler)
+            .then(function(response) {
+                return updateCatalog('approved-temp-langnames', onProgress);
+            })
+            .catch(errorHandler)
+            .then(function(response) {
+                return updateCatalog('new-language-questions', onProgress)
+            })
+            .catch(errorHandler)
+            .then(function() {
+                return Promise.resolve();
+            });
+    };
+
+    /**
+     * Downloads a global catalog and indexes it.
+     * Note: you may provide a single object parameter if you prefer.
+     *
+     * @param slug {string|{}} the slug of the catalog to download. Or an object containing all the args.
+     * @param onProgress {function} an optional progress listener. This should receive progress id, total, completed
+     * @returns {Promise}
+     */
+    const updateCatalog = function(slug, onProgress) {
+        // support passing args as an object
+        if(slug != null && typeof slug == 'object') {
+            onProgress = slug.onProgress;
+            slug = slug.slug;
+        }
+        onProgress = onProgress || function() {};
+        onProgress = onProgress.bind(null, slug);
+
+        library.autosave(false);
+        return injectGlobalCatalogs()
+            .then(function() {
+                return new Promise(function(resolve, reject) {
+                    try {
+                        resolve(library.public_getters.getCatalog(slug));
+                    } catch(err) {
+                        reject(err);
+                    }
+                })
+            })
+            .then(function(catalog) {
+                if(!catalog) return Promise.reject(new Error('Unknown catalog'));
+                return request.read(catalog.url);
+            })
+            .then(function(response) {
+                if(response.status != 200) return Promise.reject(response);
+                return response.data;
+            })
+            .then(function(data) {
+                library.autosave(false);
+                if(slug === 'langnames') {
+                    library.clearTargetLanguages();
+                    return indexTargetLanguageCatalog(data, onProgress);
+                } else if(slug === 'new-language-questions') {
+                    library.clearNewLanguageQuestions();
+                    return indexNewLanguageQuestionsCatalog(data, onProgress);
+                } else if(slug === 'temp-langnames') {
+                    // TRICKY: we do not clear this table because users can add data to it
+                    return indexTempLangsCatalog(data, onProgress);
+                } else if(slug === 'approved-temp-langnames') {
+                    library.clearApprovedTempLanguages();
+                    return indexApprovedTempLangsCatalog(data, onProgress);
+                } else {
+                    return Promise.reject(new Error('Parsing this catalog has not been implemented'));
+                }
+            })
+            .then(function(response) {
+                library.commit();
+                library.autosave(true);
+                return Promise.resolve(response);
+            })
+            .catch(function(err) {
+                library.autosave(true);
+                return Promise.reject(err);
+            });
+    };
+
+    /**
+     * Parses the target language catalog and indexes it.
+     *
+     * @param data {string}
+     * @param onProgress {function} an optional progress listener. This should receive progress id, total, completed
+     * @returns {Promise}
+     */
+    const indexTargetLanguageCatalog = function(data, onProgress) {
+        onProgress = onProgress || function() {};
+        return new Promise(function(resolve, reject) {
+            try {
+                let languages = JSON.parse(data);
+                _.forEach(languages, function (language, index) {
+                    language.slug = language.lc;
+                    language.name = language.ln;
+                    language.anglicized_name = language.ang;
+                    language.direction = language.ld;
+                    language.region = language.lr;
+                    language.country_codes = language.cc || [];
+                    language.aliases = language.alt || [];
+                    language.is_gateway_language = language.gl ? language.gl : false;
+
+                    try {
+                        library.addTargetLanguage(language);
+                    } catch (err) {
+                        console.error('Failed to add target language', language);
+                        reject(err);
+                        return;
+                    }
+                    onProgress(languages.length, index + 1);
+                });
+                resolve();
+            } catch(err) {
+                reject(err);
+            }
+        });
+    };
+
+    /**
+     * Parses the new language questions catalog and indexes it.
+     *
+     * @param data {string}
+     * @param onProgress {function} an optional progress listener. This should receive progress id, total, completed
+     * @returns {Promise}
+     */
+    const indexNewLanguageQuestionsCatalog = function(data, onProgress) {
+        onProgress = onProgress || function() {};
+        return new Promise(function(resolve, reject) {
+            try {
+                let obj = JSON.parse(data);
+                _.forEach(obj.languages, function (questionnaire, index) {
+                    // format
+                    questionnaire.language_slug = questionnaire.slug;
+                    questionnaire.language_name = questionnaire.name;
+                    questionnaire.td_id = questionnaire.questionnaire_id;
+                    questionnaire.language_direction = questionnaire.dir.toLowerCase() === 'rtl' ? 'rtl' : 'ltr';
+
+                    try {
+                        let id = library.addQuestionnaire(questionnaire);
+                        if (id > 0) {
+                            // add questions
+                            _.forEach(questionnaire.questions, function (question, n) {
+                                // format question
+                                question.is_required = question.required ? 1 : 0;
+                                question.depends_on = question.depends_on === null ? -1 : question.depends_on;
+                                question.td_id = question.id;
+
+                                try {
+                                    library.addQuestion(question, id);
+                                } catch (err) {
+                                    console.error('Failed to add question', question);
+                                    reject(err);
+                                    return;
+                                }
+                                // broadcast itemized progress if there is only one questionnaire
+                                if (obj.languages.length == 1) {
+                                    onProgress(questionnaire.questions.length, n + 1);
+                                }
+                            });
+                        } else {
+                            console.error('Failed to add questionnaire', questionnaire);
+                        }
+                    } catch (err) {
+                        console.error('Failed to add questionnaire', questionnaire);
+                        reject(err);
+                        return;
+                    }
+                    // broadcast overall progress if there are multiple questionnaires.
+                    if (obj.languages.length > 1) {
+                        onProgress(obj.languages.length, index + 1);
+                    }
+                });
+                resolve();
+            } catch (err) {
+                reject(err);
+            }
+        });
+    };
+
+    /**
+     * Parses the temporary language codes catalog and indexes it.
+     *
+     * @param data {string}
+     * @param onProgress {function} an optional progress listener. This should receive progress id, total, completed
+     * @returns {Promise}
+     */
+    const indexTempLangsCatalog = function(data, onProgress) {
+        onProgress = onProgress || function() {};
+        return new Promise(function(resolve, reject) {
+            try {
+                let languages = JSON.parse(data);
+                _.forEach(languages, function (language, index) {
+                    // format
+                    language.slug = language.lc;
+                    language.name = language.ln;
+                    language.anglicized_name = language.ang;
+                    language.direction = language.ld;
+                    language.region = language.lr;
+                    language.country_codes = language.cc || [];
+                    language.aliases = language.alt || [];
+                    language.is_gateway_language = language.gl ? language.gl : false;
+
+                    try {
+                        if(!library.addTempTargetLanguage(language)) {
+                            reject('Failed to add temporary target language');
+                        }
+                    } catch (err) {
+                        console.error('Failed to add temporary target language', language);
+                        reject(err);
+                        return;
+                    }
+                    onProgress(languages.length, index + 1);
+                });
+                resolve();
+            } catch (err) {
+                reject(err);
+            }
+        });
+    };
+
+    /**
+     * Parses the approved temporary language codes catalog and indexes it.
+     *
+     * @param data {string}
+     * @param onProgress {function} an optional progress listener. This should receive progress id, total, completed
+     * @returns {Promise}
+     */
+    const indexApprovedTempLangsCatalog = function(data, onProgress) {
+        onProgress = onProgress || function() {};
+        return new Promise(function(resolve, reject) {
+            let languages = JSON.parse(data);
+            _.forEach(languages, function(language, index) {
+                try {
+                    let tempCode = Object.keys(language)[0];
+                    library.setApprovedTargetLanguage(tempCode, language[tempCode]);
+                } catch (err) {
+                    console.error('Failed to set the approved language code', language);
+                    reject(err);
+                    return;
+                }
+                onProgress(languages.length, index + 1);
+            });
+            resolve();
+        });
+    };
+
+    /**
+     * Returns the first resource container format found in the list.
+     * E.g. the array may contain binary formats such as pdf, mp3, etc. This basically filters those.
+     *
+     * @param formats {[]} an array of resource formats
+     * @returns {{}} the resource container format
+     */
+    const getResourceContainerFormat = function(formats) {
+        for(let format of formats) {
+            // TODO: rather than hard coding the mime type use library.spec.base_mime_type
+            if(format.mime_type.match(/application\/tsrc\+.+/)) {
+                return format;
+            }
+        }
+        return null;
+    };
+
+    /**
+     * Downloads a resource container.
+     * Note: You may provide a single object parameter if you prefer
+     *
+     * TRICKY: to keep the interface stable we've abstracted some things.
+     * once the api supports real resource containers this entire method can go away and be replace
+     * with downloadContainer_Future (which should be renamed to downloadContainer).
+     * convertLegacyResourceToContainer will also become deprecated at that time though it may be handy to keep around.
+     *
+     * @param languageSlug {string}
+     * @param projectSlug {string}
+     * @param resourceSlug {string}
+     * @param progressCallback {function} receives download progress updates
+     * @returns {Promise.<Container>} The new container
+     */
+    const downloadContainer = function(languageSlug, projectSlug, resourceSlug, progressCallback) {
+        // support passing args as an object
+        if(languageSlug != null && typeof languageSlug == 'object') {
+            resourceSlug = languageSlug.resourceSlug;
+            projectSlug = languageSlug.projectSlug;
+            languageSlug = languageSlug.languageSlug;
+        }
+
+        // get the legacy data as if it were a real resource container
+        return downloadContainer_Future(languageSlug, projectSlug, resourceSlug, progressCallback)
+            .then(function(path) {
+                // migrate to resource container
+                let resource;
+                try {
+                    resource = library.public_getters.getResource(languageSlug, projectSlug, resourceSlug);
+                } catch (err) {
+                    return Promise.reject(err);
+                }
+
+                if(!resource) return Promise.reject(new Error('Unknown resource'));
+
+                // remove import flag
+                let containerFormat = getResourceContainerFormat(resource.formats);
+                if(!containerFormat) return Promise.reject(new Error('Unknown resource format'));
+                containerFormat.imported = 0;
+                resource.formats = [containerFormat];
+
+                try {
+                    library.addResource(resource, resource.project_id);
+                } catch (err) {
+                    rimraf.sync(path);
+                    return Promise.reject(err);
+                }
+
+                let data = fs.readFileSync(path, {encoding: 'utf8'});
+
+                // clean downloaded file
+                rimraf.sync(path);
+                return convertLegacyResourceToContainer(languageSlug, projectSlug, resourceSlug, data);
+            });
+    };
+
+    /**
+     * Downloads a resource container.
+     * This expects a correctly formatted resource container
+     * and will download it directly to the disk
+     *
+     * Note: You may provide a single object parameter if you prefer
+     *
+     * once the api can deliver proper resource containers this method
+     * should be renamed to downloadContainer
+     *
+     * @param languageSlug {string}
+     * @param projectSlug {string}
+     * @param resourceSlug {string}
+     * @param progressCallback {function} receives download progress updates
+     * @returns {Promise.<String>} the path to the downloaded resource container
+     */
+    const downloadContainer_Future = function(languageSlug, projectSlug, resourceSlug, progressCallback) {
+        // support passing args as an object
+        if(languageSlug != null && typeof languageSlug == 'object') {
+            resourceSlug = languageSlug.resourceSlug;
+            projectSlug = languageSlug.projectSlug;
+            languageSlug = languageSlug.languageSlug;
+        }
+
+        let destFile;
+        let tempFile;
+        let containerDir;
+        return new Promise(function(resolve, reject) {
+                try {
+                    resolve(library.public_getters.getResource(languageSlug, projectSlug, resourceSlug));
+                } catch(err) {
+                    reject(err);
+                }
+            })
+            .then(function(resource) {
+                if(!resource) return Promise.reject(new Error('Unknown resource'));
+                let containerFormat = getResourceContainerFormat(resource.formats);
+                if(!containerFormat) return Promise.reject(new Error('Missing resource container format'));
+                let containerSlug = rc.tools.makeSlug(languageSlug, projectSlug, resourceSlug);
+                containerDir = path.join(resourceDir, containerSlug);
+                destFile = containerDir + '.' + rc.tools.spec.file_ext;
+                tempFile = containerDir + '.download';
+
+                rimraf.sync(tempFile);
+
+                mkdirp(path.dirname(containerDir));
+                if(!containerFormat.url) return Promise.reject('Missing resource format url');
+                return request.download(containerFormat.url, tempFile, progressCallback);
+            })
+            .then(function(response) {
+                if(response.status !== 200) {
+                    rimraf.sync(tempFile);
+                    return Promise.reject(response);
+                }
+                // replace old files
+                rimraf.sync(containerDir);
+                return new Promise(function(resolve, reject) {
+                    mv(tempFile, destFile, {clobber: true}, function(err) {
+                        if(err) {
+                            reject(err);
+                        } else {
+                            resolve(destFile);
+                        }
+                    });
+                });
+            });
+    };
+
+    /**
+     * Converts a legacy resource catalog into a resource container.
+     * The container will be placed in.
+     *
+     * This will be deprecated once the api is updated to support proper resource containers.
+     *
+     * @param languageSlug {string}
+     * @param projectSlug {string}
+     * @param resourceSlug {string}
+     * @param data {string} the legacy data that will be converted
+     * @return {Promise.<Container>}
+     */
+    const convertLegacyResourceToContainer = function(languageSlug, projectSlug, resourceSlug, data) {
+        let containerSlug = rc.tools.makeSlug(languageSlug, projectSlug, resourceSlug);
+        let dir = path.join(resourceDir, containerSlug);
+
+        return new Promise(function(resolve, reject) {
+                let props = {};
+                props.language = library.public_getters.getSourceLanguage(languageSlug);
+                if(!props.language) {
+                    reject(new Error('Missing language'));
+                    return;
+                }
+                props.project = library.public_getters.getProject(languageSlug, projectSlug);
+                if(!props.project) {
+                    reject(new Error('Missing project'));
+                    return;
+                }
+                props.project.categories = [];
+                let categories = library.public_getters.getCategories(languageSlug, projectSlug);
+                for(let cat of categories) {
+                    props.project.categories.push(cat.slug);
+                }
+
+                props.resource = library.public_getters.getResource(languageSlug, projectSlug, resourceSlug);
+                if(!props.resource) {
+                    reject(new Error('Missing resource'));
+                    return;
+                }
+
+                let format = getResourceContainerFormat(props.resource.formats);
+                props.modified_at = format && format.modified_at ? format.modified_at : 0;
+
+                delete props.language.id;
+                delete props.project.id;
+                delete props.project.source_language_id;
+                delete props.project.source_language_slug;
+                delete props.project.category_id;
+                delete props.resource.id;
+                delete props.resource.project_id;
+                delete props.resource.source_language_slug;
+                delete props.resource.project_slug;
+                delete props.resource.formats;
+
+                resolve(props);
+            })
+            .then(function(props) {
+                // grab the tW assignments
+                if(props.resource.translation_words_assignments_url) {
+                    return request.read(props.resource.translation_words_assignments_url)
+                        .then(function(request) {
+                            if(request.status < 300) {
+                                try {
+                                    let tw_assignments = {};
+                                    for (let chapter of JSON.parse(request.data).chapters) {
+                                        chapter.id = padSlug(chapter.id);
+                                        tw_assignments[chapter.id] = {};
+                                        for (let frame of chapter.frames) {
+                                            frame.id = padSlug(frame.id);
+                                            tw_assignments[chapter.id][frame.id] = [];
+                                            for (let word of frame.items) {
+                                                let twProj = props.project.slug === 'obs' ? 'bible-obs' : 'bible';
+                                                tw_assignments[chapter.id][frame.id].push('//' + twProj + '/tw/' + word.id);
+                                            }
+                                        }
+                                    }
+                                    props.tw_assignments = tw_assignments;
+                                } catch (err) {
+                                    console.warn(err);
+                                }
+                            }
+                            delete props.resource.translation_words_assignments_url;
+                            return Promise.resolve(props);
+                        });
+                } else {
+                    return Promise.resolve(props);
+                }
+            })
+            .then(function(props) {
+                return rc.tools.convertResource(data, dir, props);
+            });
+    };
+
+    /**
+     * Loads a resource container from anywhere on the disk.
+     * This does not look in the internal resource container directory
+     * or check the index.
+     *
+     * @param containerPath the absolute path to a resource container directory
+     * @returns {Promise.<Container>}
+     */
+    const loadContainer = function(containerPath) {
+        return rc.load(containerPath);
+    };
+
+    /**
+     * Copies a valid resource container into the resource directory and adds an entry to the index.
+     * If the container already exists in the system it will be overwritten.
+     * Invalid containers will cause this method to return an error.
+     * The container *must* be open (uncompressed). This is in preparation for v0.2 of the rc spec.
+     * Containers imported in this manner will have a flag set to indicate it was manually imported.
+     *
+     * @param containerPath {string} the path to the resource container directory that will be imported
+     * @returns {Promise.<Container>}
+     */
+    const importContainer = function(containerPath) {
+        return rc.load(containerPath)
+            .then(function(container) {
+                // validate project
+                // TRICKY: we currently only support importing known projects. Only the language and resource can vary.
+                let meta = library.getProjectMeta(container.project.slug);
+                if(!meta) return Promise.reject(new Error('Unsupported project'));
+
+                // delete the old container
+                let destination = path.join(resourceDir, container.slug);
+                rimraf.sync(destination);
+                return new Promise(function(resolve, reject) {
+                    ncp(containerPath, destination, function(err) {
+                        if(err) {
+                            reject(err);
+                        } else {
+                            // add entry to the index
+                            try {
+                                // TODO: begin transaction
+                                // library.autosave(false);
+                                let languageId = library.addSourceLanguage(container.language);
+
+                                // build categories
+                                try {
+                                    let categories = [];
+                                    if(container.info.project.categories) {
+                                        for (let catSlug of container.info.project.categories) {
+                                            let existingCat = library.public_getters.getCategory(container.language.slug, catSlug);
+                                            let catName = existingCat ? existingCat.name : catSlug;
+                                            categories.push({
+                                                slug: catSlug,
+                                                name: catName
+                                            });
+                                        }
+                                    }
+                                    container.project.categories = categories;
+                                } catch (err) {
+                                    console.log(err);
+                                }
+
+                                let projectId = library.addProject(container.project, languageId);
+                                // NOTE: we should technically remove the old formats, but we only use the rc format so we can ignore the rest.
+                                let resource = container.resource;
+                                resource.formats = [{
+                                    package_version: container.info.package_version,
+                                    mime_type: container.resource.type,
+                                    modified_at: container.resource.date_modified,
+                                    imported: true,
+                                    url: ''
+                                }];
+                                library.addResource(resource, projectId);
+                                // library.autosave(true);
+                                // TODO: commit changes
+                                resolve();
+                            } catch (err) {
+                                // TODO: roll back changes
+                                // library.autosave(true);
+                                reject(err);
+                            }
+                        }
+                    });
+                }).then(function() {
+                    return openContainer(container.language.slug, container.project.slug, container.resource.slug);
+                });
+            });
+    };
+
+    /**
+     * Opens a resource container archive so it's contents can be read.
+     * The index will be referenced to validate the resource and retrieve the container type.
+     *
+     * @param languageSlug {string}
+     * @param projectSlug {string}
+     * @param resourceSlug {string}
+     * @returns {Promise.<Container>}
+     */
+    const openContainer = function(languageSlug, projectSlug, resourceSlug) {
+        return new Promise(function(resolve, reject) {
+                try {
+                    resolve(library.public_getters.getResource(languageSlug, projectSlug, resourceSlug));
+                } catch(err) {
+                    reject(err);
+                }
+            })
+            .then(function(resource) {
+                if(!resource) return Promise.reject(new Error('Unknown resource'));
+                let containerSlug = rc.tools.makeSlug(languageSlug, projectSlug, resourceSlug);
+                let directory = path.join(resourceDir, containerSlug);
+                let archive = directory + '.' + rc.tools.spec.file_ext;
+                return rc.open(archive, directory, opts);
+            });
+    };
+
+    /**
+     * Closes a resource container archive.
+     *
+     * @param languageSlug {string}
+     * @param projectSlug {string}
+     * @param resourceSlug {string}
+     * @returns {Promise.<string>} the path to the closed container
+     */
+    const closeContainer = function(languageSlug, projectSlug, resourceSlug) {
+        return new Promise(function(resolve, reject) {
+                try {
+                    resolve(library.public_getters.getResource(languageSlug, projectSlug, resourceSlug));
+                } catch(err) {
+                    reject(err);
+                }
+            })
+            .then(function(resource) {
+                if(!resource) return Promise.reject(new Error('Unknown resource'));
+                let containerSlug = rc.tools.makeSlug(languageSlug, projectSlug, resourceSlug);
+                let directory = path.join(resourceDir, containerSlug);
+                opts.clean = true; // remove the directory once closed.
+                return rc.close(directory, opts);
+            });
+    };
+
+    /**
+     * Returns a list of resource containers that have been downloaded
+     * @returns {Promise.<[{}]>} an array of resource container info objects (package.json).
+     */
+    const listResourceContainers = function() {
+        return new Promise(function(resolve, reject) {
+            try {
+                let files;
+                if(fileUtils.fileExists(resourceDir)) {
+                    files = fs.readdirSync(resourceDir);
+                    files = _.uniqBy(files, function (f) {
+                        return path.basename(f, '.' + rc.tools.spec.file_ext);
+                    }).map(function(f) { return path.join(resourceDir, f);});
+                }
+                if(!files) files = [];
+                resolve(files);
+            } catch (err) {
+                reject(err);
+            }
+        }).then(function(files) {
+            return promiseUtils.chain(rc.tools.inspect, function(err) {
+                console.error(err);
+                return false;
+            })(files);
+        });
+    };
+
+    /**
+     * Prepares a list of items that are eligible for updates.
+     * Note: This is different than what's available for download. Everything in the index is technically available for download.
+     *
+     * Eligibility is determined by:
+     * * available items who's modified_at exceeds the local equivalent
+     * * available items who's modified_at is 0 and accompanying local item's modified_at is 0
+     *
+     * @param local {{}} keyed object of local (downloaded) items.
+     * @param available {[{slug, modified_at}]} an array of available (indexed) items
+     * @returns {Promise.<Array>}
+     */
+    const inferUpdates = function(local, available) {
+        let updates = [];
+        for(let a of available) {
+            try {
+                if (a.modified_at > local[a.slug]
+                    || (a.modified_at == 0 && local[a.slug] == 0)) updates.push(a.slug);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+        return Promise.resolve(updates);
+    };
+
+    /**
+     * Returns a list of source languages that are eligible for updates.
+     *
+     * @returns {Promise.<Array>} An array of slugs
+     */
+    const listSourceLanguageUpdates = function() {
+        return new Promise(function(resolve, reject) {
+            try{
+                resolve(library.listSourceLanguagesLastModified());
+            } catch (err) {
+                reject(err);
+            }
+        }).then(function(languages) {
+            return listResourceContainers()
+                .then(function(results) {
+                    // flatten modified_at
+                    let local = {};
+                    for(let info of results) {
+                        try {
+                            if(!local[info.language.slug]) local[info.language.slug] = -1;
+                            let old = local[info.language.slug];
+                            local[info.language.slug] = info.modified_at > old ? info.modified_at : old;
+                        } catch (err) {
+                            console.error(err);
+                        }
+                    }
+                    return inferUpdates(local, languages);
+                });
+        });
+    };
+
+    /**
+     * Returns a list of projects that are eligible for updates.
+     * If no language is given the results will include all projects in all languages. This is helpful if you need to view updates based on project first rather than source language first.
+     *
+     * @param languageSlug {string|null} the slug of a source language who's projects will be checked.
+     * @returns {Promise.<Array>} An array of slugs
+     */
+    const listProjectUpdates = function(languageSlug) {
+       return new Promise(function(resolve, reject) {
+            try{
+                resolve(library.listProjectsLastModified(languageSlug));
+            } catch (err) {
+                reject(err);
+            }
+        }).then(function(projects) {
+            return listResourceContainers()
+                .then(function(results) {
+                    // flatten modified_at
+                    let local = {};
+                    for(let info of results) {
+                        try {
+                            if(languageSlug && info.language.slug !== languageSlug) continue;
+                            if(!local[info.project.slug]) local[info.project.slug] = -1;
+                            let old = local[info.project.slug];
+                            local[info.project.slug] = info.modified_at > old ? info.modified_at : old;
+                        } catch (err) {
+                            console.error(err);
+                        }
+                    }
+                    return inferUpdates(local, projects);
+                });
+        });
+    };
+
+    return {
+        updateSources: updateSources,
+        updateChunks: updateChunks,
+        updateCatalogs: updateCatalogs,
+        downloadResourceContainer: downloadContainer,
+        legacy_tools: {
+            updateResources: updateResources,
+            updateTA: updateTA,
+            updateCatalog: updateCatalog,
+
+            downloadFutureCompatibleResourceContainer: downloadContainer_Future,
+            convertResource: convertLegacyResourceToContainer
+        },
+        loadResourceContainer: loadContainer,
+        importResourceContainer: importContainer,
+        openResourceContainer: openContainer,
+        closeResourceContainer: closeContainer,
+        listResourceContainers: listResourceContainers,
+        findUpdates: {
+            sourceLanguages:listSourceLanguageUpdates,
+            projects:listProjectUpdates
+        },
+        index: index,
+        indexSync: indexSync
+    };
+}","Initializes a new api client.
+
+@param dbPath {string} the path to the db where information will be indexed.
+@param resourceDir {string} the directory where resources will be stored
+@param opts {{}} advanced options. compression_method: the type of compression to use for resource containers [tar|zip].
+@returns {Client}
+@constructor",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L27-L1298
+"function(project) {
+        if(project.slug.toLowerCase() === 'obs'
+            || project.slug.toLowerCase() === 'bible-obs'
+            || project.slug.toLowerCase() === 'bible'
+            || !project.chunks_url) return Promise.resolve();
+
+
+        return request.read(project.chunks_url)
+            .then(function(response) {
+                // consume chunk data
+                if(response.status !== 200) return Promise.reject(response);
+
+                let data;
+                try {
+                    data = JSON.parse(response.data);
+                } catch(err) {
+                    console.log(project);
+                    return Promise.reject(err);
+                }
+
+                try {
+                    let language_id = library.addSourceLanguage({
+                        slug: 'en',
+                        name: 'English',
+                        direction: 'ltr'
+                    });
+
+                    // TODO: retrieve the correct versification name(s) from the source language
+                    let versification_id = library.addVersification({
+                        slug: 'en-US',
+                        name: 'American English'
+                    }, language_id);
+
+
+                    if (versification_id > 0) {
+                        for (let chunk of data) {
+                            library.addChunkMarker({
+                                chapter: padSlug(chunk.chp, 2),
+                                verse: padSlug(chunk.firstvs, 2)
+                            }, project.slug, versification_id);
+                        }
+                    }
+                } catch (err) {
+                    return Promise.reject(err);
+                }
+            });
+    }","Downloads the chunks for a project
+@param project {{}}",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L59-L105
+"function(project) {
+        return request.read(project.lang_catalog)
+            .then(function(response) {
+                // consume language data
+                if(response.status !== 200) return Promise.reject(response);
+
+                let data;
+                try {
+                    data = JSON.parse(response.data);
+                } catch(err) {
+                    return Promise.reject(err);
+                }
+
+                let projects = [];
+                for(let language of data) {
+                    try {
+                        let language_id = library.addSourceLanguage({
+                            slug: language.language.slug,
+                            name: language.language.name,
+                            direction: language.language.direction
+                        });
+
+                        project.categories = _.map(project.meta, function (names, slug, index) {
+                            return {name: names[index], slug: slug};
+                        }.bind(this, language.project.meta));
+
+                        if (project.slug.toLowerCase() !== 'obs') {
+                            project.chunks_url = 'https://api.unfoldingword.org/bible/txt/1/' + project.slug + '/chunks.json';
+                        }
+
+                        let projectId = library.addProject({
+                            slug: project.slug,
+                            name: language.project.name,
+                            desc: language.project.desc,
+                            icon: project.icon,
+                            sort: project.sort,
+                            chunks_url: project.chunks_url,
+                            categories: project.categories,
+                        }, language_id);
+
+                        projects.push({
+                            id: projectId,
+                            chunks_url: project.chunks_url,
+                            slug: project.slug,
+                            resourceUrl: language.res_catalog,
+                            source_language_slug: language.language.slug,
+                            source_language_id: language_id
+                        });
+                    } catch (err) {
+                        return Promise.reject(err);
+                    }
+                }
+
+                // TRICKY: we just flipped the data hierarchy from project->lang to lang->project for future compatibility
+                return projects;
+            });
+    }","Downloads the source languages for a project
+@param project {{}}
+@returns {Promise}",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L112-L168
+"function(project) {
+        return request.read(project.resourceUrl)
+            .then(function(response) {
+                // consume resource data
+                if(response.status !== 200) return Promise.reject(response);
+
+                let data;
+                try {
+                    data = JSON.parse(response.data);
+                } catch(err) {
+                    return Promise.reject(err);
+                }
+
+                for(let resource of data) {
+                    try {
+                        resource.slug = resource.slug.toLowerCase();
+                        switch (resource.slug) {
+                            case 'obs':
+                            case 'ulb':
+                                resource.status.translate_mode = 'all';
+                                break;
+                            default:
+                                resource.status.translate_mode = 'gl';
+                        }
+
+                        resource.status.pub_date = resource.status.publish_date;
+                        resource.translation_words_assignments_url = resource.tw_cat;
+                        resource.type = 'book';
+                        resource.formats = [{
+                            package_version: rc.tools.spec.version,
+                            mime_type: rc.tools.typeToMime('book'),
+                            modified_at: resource.date_modified,
+                            imported: 0,
+                            url: resource.source
+                        }];
+                        library.addResource(resource, project.id);
+
+                        // coerce notes to resource
+                        let helpResource = {
+                            slug: 'tn',
+                            name: 'translationNotes',
+                            type: 'help',
+                            status: resource.status,
+                            formats: [{
+                                package_version: rc.tools.spec.version,
+                                mime_type: rc.tools.typeToMime('help'),
+                                modified_at: resource.date_modified,
+                                imported: 0,
+                                url: resource.notes
+                            }]
+                        };
+                        helpResource.status.translate_mode = 'gl';
+                        helpResource.status.source_translations = [{
+                            language_slug: project.source_language_slug,
+                            resource_slug: 'tn',
+                            version: resource.status.version
+                        }];
+                        if (resource.notes) {
+                            library.addResource(helpResource, project.id);
+                        }
+
+                        // coerce questions to resource
+                        helpResource.slug = 'tq';
+                        helpResource.name = 'translationQuestions';
+                        helpResource.formats = [{
+                            package_version: rc.tools.spec.version,
+                            mime_type: rc.tools.typeToMime('help'),
+                            modified_at: resource.date_modified,
+                            imported: 0,
+                            url: resource.checking_questions
+                        }];
+                        helpResource.status.source_translations = [{
+                            language_slug: project.source_language_slug,
+                            resource_slug: 'tq',
+                            version: resource.status.version
+                        }];
+                        if (resource.checking_questions) {
+                            library.addResource(helpResource, project.id);
+                        }
+
+                        // add words project (this is insert/update so it will only be added once)
+                        // TRICKY: obs tw has not been unified with bible tw yet so we add it as separate project.
+                        let wordsProjectId = library.addProject({
+                            slug: project.slug === 'obs' ? 'bible-obs' : 'bible',
+                            name: 'translationWords' + (project.slug === 'obs' ? ' OBS' : ''),
+                            desc: '',
+                            icon: '',
+                            sort: 100,
+                            chunks_url: '',
+                            categories: []
+                        }, project.source_language_id);
+
+                        // add resource to words project
+                        let dictResource = _.clone(helpResource);
+                        dictResource.slug = 'tw';
+                        dictResource.name = 'translationWords';
+                        dictResource.type = 'dict';
+                        dictResource.formats = [{
+                            package_version: rc.tools.spec.version,
+                            mime_type: rc.tools.typeToMime('dict'),
+                            modified_at: resource.date_modified,
+                            imported: 0,
+                            url: resource.terms
+                        }];
+                        dictResource.status.source_translations = [{
+                            language_slug: project.source_language_slug,
+                            resource_slug: 'tw',
+                            version: resource.status.version
+                        }];
+                        if (resource.terms) {
+                            library.addResource(dictResource, wordsProjectId);
+                        }
+                    } catch (err) {
+                        return Promise.reject(err);
+                    }
+                }
+            });
+    }","Downloads the resources for a source language.
+
+@param project {{}}
+@returns {Promise}",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L176-L293
+"function() {
+        library.addCatalog({
+            slug: 'langnames',
+            url: 'https://td.unfoldingword.org/exports/langnames.json',
+            modified_at: 0
+        });
+        library.addCatalog({
+            slug: 'new-language-questions',
+            url: 'https://td.unfoldingword.org/api/questionnaire/',
+            modified_at: 0
+        });
+        library.addCatalog({
+            slug: 'temp-langnames',
+            url: 'https://td.unfoldingword.org/api/templanguages/',
+            modified_at: 0
+        });
+        // TRICKY: this catalog should always be indexed after langnames and temp-langnames otherwise the linking will fail!
+        library.addCatalog({
+            slug: 'approved-temp-langnames',
+            url: 'https://td.unfoldingword.org/api/templanguages/assignment/changed/',
+            modified_at: 0
+        });
+        return Promise.resolve();
+    }","Injects the global catalogs since they are missing from api v2.
+
+@returns {Promise}",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L300-L323
+"function(url, onProgress) {
+        onProgress = onProgress || function(){};
+        return injectGlobalCatalogs()
+            .then(function() {
+                library.commit();
+               return request.read(url);
+            })
+            .then(function(response) {
+                // disable saves for better performance
+                library.autosave(false);
+                // index projects and source languages
+                if (response.status !== 200) return Promise.reject(response);
+
+                let projects;
+                try {
+                    projects = JSON.parse(response.data);
+                } catch (err) {
+                    return Promise.reject(err);
+                }
+
+                return promiseUtils.chain(downloadSourceLanguages, function(err, data) {
+                    if(err instanceof Error) return Promise.reject(err);
+                    console.log(err);
+                    return false;
+                }, {compact: true, onProgress: onProgress.bind(null, 'projects')})(projects);
+            })
+            .then(function(projects) {
+                // index resources
+                library.commit();
+                if(!projects) return Promise.reject('No projects found');
+                let list = [];
+                for(let project of projects) {
+                    for(let localizedProject of project) {
+                        list.push({
+                            id: localizedProject.id,
+                            slug: localizedProject.slug,
+                            source_language_id: localizedProject.source_language_id,
+                            resourceUrl: localizedProject.resourceUrl
+                        });
+                    }
+                }
+
+                return promiseUtils.chain(downloadSourceResources, function(err, data) {
+                    if(err instanceof Error) return Promise.reject(err);
+                    console.log(err);
+                    return false;
+                }, {compact: true, onProgress: onProgress.bind(null, 'resources')})(list);
+            }).then(function() {
+                // keep the promise args clean
+                library.commit();
+                library.autosave(true);
+                return Promise.resolve();
+            }).catch(function(err) {
+                library.autosave(true);
+                return Promise.reject(err);
+            });
+    }","Indexes the languages, projects, and resources from the api
+
+@param url {string} the entry resource api catalog
+@param onProgress {function} an optional progress listener. This should receive progress id, total, completed
+@returns {Promise}",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L346-L402
+"function(onProgress) {
+        onProgress = onProgress || function() {};
+        let projects = library.public_getters.getProjects();
+        library.autosave(false);
+        return promiseUtils.chain(downloadChunks, function(err, data) {
+            if(err instanceof Error) return Promise.reject(err);
+            console.log(err);
+            return false;
+        }, {compact: true, onProgress: onProgress.bind(null, 'chunks')})(projects)
+            .then(function() {
+                library.commit();
+                library.autosave(true);
+                return Promise.resolve();
+            })
+            .catch(function(err) {
+                library.autosave(true);
+                return Promise.reject(err);
+            });
+    }","Downloads the chunks for all projects
+@param onProgress
+@returns {Promise.<>}",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L409-L427
+"function(onProgress) {
+        onProgress = onProgress || function() {};
+        library.autosave(false);
+        let modules_urls = [
+            'https://api.unfoldingword.org/ta/txt/1/en/audio_2.json',
+            'https://api.unfoldingword.org/ta/txt/1/en/checking_1.json',
+            'https://api.unfoldingword.org/ta/txt/1/en/checking_2.json',
+            'https://api.unfoldingword.org/ta/txt/1/en/gateway_3.json',
+            'https://api.unfoldingword.org/ta/txt/1/en/intro_1.json',
+            'https://api.unfoldingword.org/ta/txt/1/en/process_1.json',
+            'https://api.unfoldingword.org/ta/txt/1/en/translate_1.json',
+            'https://api.unfoldingword.org/ta/txt/1/en/translate_2.json'
+        ];
+        return promiseUtils.chain(downloadTA, function(err, data) {
+            if(err instanceof Error) return Promise.reject(err);
+            console.log(err);
+            return false;
+        }, {compact: true, onProgress: onProgress.bind(null, 'ta')})(modules_urls)
+            .then(function() {
+                library.commit();
+                library.autosave(true);
+                return Promise.resolve();
+            })
+            .catch(function(err) {
+                library.autosave(true);
+                return Promise.reject(err);
+            });
+    }","Downloads the tA projects
+@param onProgress
+@returns {Promise.<>}",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L434-L461
+"function(onProgress) {
+        const errorHandler = function(err) {
+            if(err instanceof Error) {
+                return Promise.reject(err);
+            } else {
+                return Promise.resolve();
+            }
+        };
+
+        // TRICKY: the language catalogs are dependent so we must run them in order
+        return updateCatalog('langnames', onProgress)
+            .catch(errorHandler)
+            .then(function(response) {
+                return updateCatalog('temp-langnames', onProgress);
+            })
+            .catch(errorHandler)
+            .then(function(response) {
+                return updateCatalog('approved-temp-langnames', onProgress);
+            })
+            .catch(errorHandler)
+            .then(function(response) {
+                return updateCatalog('new-language-questions', onProgress)
+            })
+            .catch(errorHandler)
+            .then(function() {
+                return Promise.resolve();
+            });
+    }","Updates all of the global catalogs
+@param onProgress
+@returns {Promise.<>}",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L521-L548
+"function(slug, onProgress) {
+        // support passing args as an object
+        if(slug != null && typeof slug == 'object') {
+            onProgress = slug.onProgress;
+            slug = slug.slug;
+        }
+        onProgress = onProgress || function() {};
+        onProgress = onProgress.bind(null, slug);
+
+        library.autosave(false);
+        return injectGlobalCatalogs()
+            .then(function() {
+                return new Promise(function(resolve, reject) {
+                    try {
+                        resolve(library.public_getters.getCatalog(slug));
+                    } catch(err) {
+                        reject(err);
+                    }
+                })
+            })
+            .then(function(catalog) {
+                if(!catalog) return Promise.reject(new Error('Unknown catalog'));
+                return request.read(catalog.url);
+            })
+            .then(function(response) {
+                if(response.status != 200) return Promise.reject(response);
+                return response.data;
+            })
+            .then(function(data) {
+                library.autosave(false);
+                if(slug === 'langnames') {
+                    library.clearTargetLanguages();
+                    return indexTargetLanguageCatalog(data, onProgress);
+                } else if(slug === 'new-language-questions') {
+                    library.clearNewLanguageQuestions();
+                    return indexNewLanguageQuestionsCatalog(data, onProgress);
+                } else if(slug === 'temp-langnames') {
+                    // TRICKY: we do not clear this table because users can add data to it
+                    return indexTempLangsCatalog(data, onProgress);
+                } else if(slug === 'approved-temp-langnames') {
+                    library.clearApprovedTempLanguages();
+                    return indexApprovedTempLangsCatalog(data, onProgress);
+                } else {
+                    return Promise.reject(new Error('Parsing this catalog has not been implemented'));
+                }
+            })
+            .then(function(response) {
+                library.commit();
+                library.autosave(true);
+                return Promise.resolve(response);
+            })
+            .catch(function(err) {
+                library.autosave(true);
+                return Promise.reject(err);
+            });
+    }","Downloads a global catalog and indexes it.
+Note: you may provide a single object parameter if you prefer.
+
+@param slug {string|{}} the slug of the catalog to download. Or an object containing all the args.
+@param onProgress {function} an optional progress listener. This should receive progress id, total, completed
+@returns {Promise}",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L558-L613
+"function(data, onProgress) {
+        onProgress = onProgress || function() {};
+        return new Promise(function(resolve, reject) {
+            try {
+                let languages = JSON.parse(data);
+                _.forEach(languages, function (language, index) {
+                    language.slug = language.lc;
+                    language.name = language.ln;
+                    language.anglicized_name = language.ang;
+                    language.direction = language.ld;
+                    language.region = language.lr;
+                    language.country_codes = language.cc || [];
+                    language.aliases = language.alt || [];
+                    language.is_gateway_language = language.gl ? language.gl : false;
+
+                    try {
+                        library.addTargetLanguage(language);
+                    } catch (err) {
+                        console.error('Failed to add target language', language);
+                        reject(err);
+                        return;
+                    }
+                    onProgress(languages.length, index + 1);
+                });
+                resolve();
+            } catch(err) {
+                reject(err);
+            }
+        });
+    }","Parses the target language catalog and indexes it.
+
+@param data {string}
+@param onProgress {function} an optional progress listener. This should receive progress id, total, completed
+@returns {Promise}",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L622-L651
+"function(data, onProgress) {
+        onProgress = onProgress || function() {};
+        return new Promise(function(resolve, reject) {
+            try {
+                let obj = JSON.parse(data);
+                _.forEach(obj.languages, function (questionnaire, index) {
+                    // format
+                    questionnaire.language_slug = questionnaire.slug;
+                    questionnaire.language_name = questionnaire.name;
+                    questionnaire.td_id = questionnaire.questionnaire_id;
+                    questionnaire.language_direction = questionnaire.dir.toLowerCase() === 'rtl' ? 'rtl' : 'ltr';
+
+                    try {
+                        let id = library.addQuestionnaire(questionnaire);
+                        if (id > 0) {
+                            // add questions
+                            _.forEach(questionnaire.questions, function (question, n) {
+                                // format question
+                                question.is_required = question.required ? 1 : 0;
+                                question.depends_on = question.depends_on === null ? -1 : question.depends_on;
+                                question.td_id = question.id;
+
+                                try {
+                                    library.addQuestion(question, id);
+                                } catch (err) {
+                                    console.error('Failed to add question', question);
+                                    reject(err);
+                                    return;
+                                }
+                                // broadcast itemized progress if there is only one questionnaire
+                                if (obj.languages.length == 1) {
+                                    onProgress(questionnaire.questions.length, n + 1);
+                                }
+                            });
+                        } else {
+                            console.error('Failed to add questionnaire', questionnaire);
+                        }
+                    } catch (err) {
+                        console.error('Failed to add questionnaire', questionnaire);
+                        reject(err);
+                        return;
+                    }
+                    // broadcast overall progress if there are multiple questionnaires.
+                    if (obj.languages.length > 1) {
+                        onProgress(obj.languages.length, index + 1);
+                    }
+                });
+                resolve();
+            } catch (err) {
+                reject(err);
+            }
+        });
+    }","Parses the new language questions catalog and indexes it.
+
+@param data {string}
+@param onProgress {function} an optional progress listener. This should receive progress id, total, completed
+@returns {Promise}",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L660-L712
+"function(formats) {
+        for(let format of formats) {
+            // TODO: rather than hard coding the mime type use library.spec.base_mime_type
+            if(format.mime_type.match(/application\/tsrc\+.+/)) {
+                return format;
+            }
+        }
+        return null;
+    }","Returns the first resource container format found in the list.
+E.g. the array may contain binary formats such as pdf, mp3, etc. This basically filters those.
+
+@param formats {[]} an array of resource formats
+@returns {{}} the resource container format",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L788-L796
+"function(languageSlug, projectSlug, resourceSlug, progressCallback) {
+        // support passing args as an object
+        if(languageSlug != null && typeof languageSlug == 'object') {
+            resourceSlug = languageSlug.resourceSlug;
+            projectSlug = languageSlug.projectSlug;
+            languageSlug = languageSlug.languageSlug;
+        }
+
+        // get the legacy data as if it were a real resource container
+        return downloadContainer_Future(languageSlug, projectSlug, resourceSlug, progressCallback)
+            .then(function(path) {
+                // migrate to resource container
+                let resource;
+                try {
+                    resource = library.public_getters.getResource(languageSlug, projectSlug, resourceSlug);
+                } catch (err) {
+                    return Promise.reject(err);
+                }
+
+                if(!resource) return Promise.reject(new Error('Unknown resource'));
+
+                // remove import flag
+                let containerFormat = getResourceContainerFormat(resource.formats);
+                if(!containerFormat) return Promise.reject(new Error('Unknown resource format'));
+                containerFormat.imported = 0;
+                resource.formats = [containerFormat];
+
+                try {
+                    library.addResource(resource, resource.project_id);
+                } catch (err) {
+                    rimraf.sync(path);
+                    return Promise.reject(err);
+                }
+
+                let data = fs.readFileSync(path, {encoding: 'utf8'});
+
+                // clean downloaded file
+                rimraf.sync(path);
+                return convertLegacyResourceToContainer(languageSlug, projectSlug, resourceSlug, data);
+            });
+    }","Downloads a resource container.
+Note: You may provide a single object parameter if you prefer
+
+TRICKY: to keep the interface stable we've abstracted some things.
+once the api supports real resource containers this entire method can go away and be replace
+with downloadContainer_Future (which should be renamed to downloadContainer).
+convertLegacyResourceToContainer will also become deprecated at that time though it may be handy to keep around.
+
+@param languageSlug {string}
+@param projectSlug {string}
+@param resourceSlug {string}
+@param progressCallback {function} receives download progress updates
+@returns {Promise.<Container>} The new container",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L813-L853
+"function(languageSlug, projectSlug, resourceSlug, progressCallback) {
+        // support passing args as an object
+        if(languageSlug != null && typeof languageSlug == 'object') {
+            resourceSlug = languageSlug.resourceSlug;
+            projectSlug = languageSlug.projectSlug;
+            languageSlug = languageSlug.languageSlug;
+        }
+
+        let destFile;
+        let tempFile;
+        let containerDir;
+        return new Promise(function(resolve, reject) {
+                try {
+                    resolve(library.public_getters.getResource(languageSlug, projectSlug, resourceSlug));
+                } catch(err) {
+                    reject(err);
+                }
+            })
+            .then(function(resource) {
+                if(!resource) return Promise.reject(new Error('Unknown resource'));
+                let containerFormat = getResourceContainerFormat(resource.formats);
+                if(!containerFormat) return Promise.reject(new Error('Missing resource container format'));
+                let containerSlug = rc.tools.makeSlug(languageSlug, projectSlug, resourceSlug);
+                containerDir = path.join(resourceDir, containerSlug);
+                destFile = containerDir + '.' + rc.tools.spec.file_ext;
+                tempFile = containerDir + '.download';
+
+                rimraf.sync(tempFile);
+
+                mkdirp(path.dirname(containerDir));
+                if(!containerFormat.url) return Promise.reject('Missing resource format url');
+                return request.download(containerFormat.url, tempFile, progressCallback);
+            })
+            .then(function(response) {
+                if(response.status !== 200) {
+                    rimraf.sync(tempFile);
+                    return Promise.reject(response);
+                }
+                // replace old files
+                rimraf.sync(containerDir);
+                return new Promise(function(resolve, reject) {
+                    mv(tempFile, destFile, {clobber: true}, function(err) {
+                        if(err) {
+                            reject(err);
+                        } else {
+                            resolve(destFile);
+                        }
+                    });
+                });
+            });
+    }","Downloads a resource container.
+This expects a correctly formatted resource container
+and will download it directly to the disk
+
+Note: You may provide a single object parameter if you prefer
+
+once the api can deliver proper resource containers this method
+should be renamed to downloadContainer
+
+@param languageSlug {string}
+@param projectSlug {string}
+@param resourceSlug {string}
+@param progressCallback {function} receives download progress updates
+@returns {Promise.<String>} the path to the downloaded resource container",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L871-L921
+"function(languageSlug, projectSlug, resourceSlug, data) {
+        let containerSlug = rc.tools.makeSlug(languageSlug, projectSlug, resourceSlug);
+        let dir = path.join(resourceDir, containerSlug);
+
+        return new Promise(function(resolve, reject) {
+                let props = {};
+                props.language = library.public_getters.getSourceLanguage(languageSlug);
+                if(!props.language) {
+                    reject(new Error('Missing language'));
+                    return;
+                }
+                props.project = library.public_getters.getProject(languageSlug, projectSlug);
+                if(!props.project) {
+                    reject(new Error('Missing project'));
+                    return;
+                }
+                props.project.categories = [];
+                let categories = library.public_getters.getCategories(languageSlug, projectSlug);
+                for(let cat of categories) {
+                    props.project.categories.push(cat.slug);
+                }
+
+                props.resource = library.public_getters.getResource(languageSlug, projectSlug, resourceSlug);
+                if(!props.resource) {
+                    reject(new Error('Missing resource'));
+                    return;
+                }
+
+                let format = getResourceContainerFormat(props.resource.formats);
+                props.modified_at = format && format.modified_at ? format.modified_at : 0;
+
+                delete props.language.id;
+                delete props.project.id;
+                delete props.project.source_language_id;
+                delete props.project.source_language_slug;
+                delete props.project.category_id;
+                delete props.resource.id;
+                delete props.resource.project_id;
+                delete props.resource.source_language_slug;
+                delete props.resource.project_slug;
+                delete props.resource.formats;
+
+                resolve(props);
+            })
+            .then(function(props) {
+                // grab the tW assignments
+                if(props.resource.translation_words_assignments_url) {
+                    return request.read(props.resource.translation_words_assignments_url)
+                        .then(function(request) {
+                            if(request.status < 300) {
+                                try {
+                                    let tw_assignments = {};
+                                    for (let chapter of JSON.parse(request.data).chapters) {
+                                        chapter.id = padSlug(chapter.id);
+                                        tw_assignments[chapter.id] = {};
+                                        for (let frame of chapter.frames) {
+                                            frame.id = padSlug(frame.id);
+                                            tw_assignments[chapter.id][frame.id] = [];
+                                            for (let word of frame.items) {
+                                                let twProj = props.project.slug === 'obs' ? 'bible-obs' : 'bible';
+                                                tw_assignments[chapter.id][frame.id].push('//' + twProj + '/tw/' + word.id);
+                                            }
+                                        }
+                                    }
+                                    props.tw_assignments = tw_assignments;
+                                } catch (err) {
+                                    console.warn(err);
+                                }
+                            }
+                            delete props.resource.translation_words_assignments_url;
+                            return Promise.resolve(props);
+                        });
+                } else {
+                    return Promise.resolve(props);
+                }
+            })
+            .then(function(props) {
+                return rc.tools.convertResource(data, dir, props);
+            });
+    }","Converts a legacy resource catalog into a resource container.
+The container will be placed in.
+
+This will be deprecated once the api is updated to support proper resource containers.
+
+@param languageSlug {string}
+@param projectSlug {string}
+@param resourceSlug {string}
+@param data {string} the legacy data that will be converted
+@return {Promise.<Container>}",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L935-L1014
+"function(containerPath) {
+        return rc.load(containerPath)
+            .then(function(container) {
+                // validate project
+                // TRICKY: we currently only support importing known projects. Only the language and resource can vary.
+                let meta = library.getProjectMeta(container.project.slug);
+                if(!meta) return Promise.reject(new Error('Unsupported project'));
+
+                // delete the old container
+                let destination = path.join(resourceDir, container.slug);
+                rimraf.sync(destination);
+                return new Promise(function(resolve, reject) {
+                    ncp(containerPath, destination, function(err) {
+                        if(err) {
+                            reject(err);
+                        } else {
+                            // add entry to the index
+                            try {
+                                // TODO: begin transaction
+                                // library.autosave(false);
+                                let languageId = library.addSourceLanguage(container.language);
+
+                                // build categories
+                                try {
+                                    let categories = [];
+                                    if(container.info.project.categories) {
+                                        for (let catSlug of container.info.project.categories) {
+                                            let existingCat = library.public_getters.getCategory(container.language.slug, catSlug);
+                                            let catName = existingCat ? existingCat.name : catSlug;
+                                            categories.push({
+                                                slug: catSlug,
+                                                name: catName
+                                            });
+                                        }
+                                    }
+                                    container.project.categories = categories;
+                                } catch (err) {
+                                    console.log(err);
+                                }
+
+                                let projectId = library.addProject(container.project, languageId);
+                                // NOTE: we should technically remove the old formats, but we only use the rc format so we can ignore the rest.
+                                let resource = container.resource;
+                                resource.formats = [{
+                                    package_version: container.info.package_version,
+                                    mime_type: container.resource.type,
+                                    modified_at: container.resource.date_modified,
+                                    imported: true,
+                                    url: ''
+                                }];
+                                library.addResource(resource, projectId);
+                                // library.autosave(true);
+                                // TODO: commit changes
+                                resolve();
+                            } catch (err) {
+                                // TODO: roll back changes
+                                // library.autosave(true);
+                                reject(err);
+                            }
+                        }
+                    });
+                }).then(function() {
+                    return openContainer(container.language.slug, container.project.slug, container.resource.slug);
+                });
+            });
+    }","Copies a valid resource container into the resource directory and adds an entry to the index.
+If the container already exists in the system it will be overwritten.
+Invalid containers will cause this method to return an error.
+The container *must* be open (uncompressed). This is in preparation for v0.2 of the rc spec.
+Containers imported in this manner will have a flag set to indicate it was manually imported.
+
+@param containerPath {string} the path to the resource container directory that will be imported
+@returns {Promise.<Container>}",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L1038-L1103
+"function(languageSlug, projectSlug, resourceSlug) {
+        return new Promise(function(resolve, reject) {
+                try {
+                    resolve(library.public_getters.getResource(languageSlug, projectSlug, resourceSlug));
+                } catch(err) {
+                    reject(err);
+                }
+            })
+            .then(function(resource) {
+                if(!resource) return Promise.reject(new Error('Unknown resource'));
+                let containerSlug = rc.tools.makeSlug(languageSlug, projectSlug, resourceSlug);
+                let directory = path.join(resourceDir, containerSlug);
+                let archive = directory + '.' + rc.tools.spec.file_ext;
+                return rc.open(archive, directory, opts);
+            });
+    }","Opens a resource container archive so it's contents can be read.
+The index will be referenced to validate the resource and retrieve the container type.
+
+@param languageSlug {string}
+@param projectSlug {string}
+@param resourceSlug {string}
+@returns {Promise.<Container>}",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L1114-L1129
+"function(languageSlug, projectSlug, resourceSlug) {
+        return new Promise(function(resolve, reject) {
+                try {
+                    resolve(library.public_getters.getResource(languageSlug, projectSlug, resourceSlug));
+                } catch(err) {
+                    reject(err);
+                }
+            })
+            .then(function(resource) {
+                if(!resource) return Promise.reject(new Error('Unknown resource'));
+                let containerSlug = rc.tools.makeSlug(languageSlug, projectSlug, resourceSlug);
+                let directory = path.join(resourceDir, containerSlug);
+                opts.clean = true; // remove the directory once closed.
+                return rc.close(directory, opts);
+            });
+    }","Closes a resource container archive.
+
+@param languageSlug {string}
+@param projectSlug {string}
+@param resourceSlug {string}
+@returns {Promise.<string>} the path to the closed container",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L1139-L1154
+"function() {
+        return new Promise(function(resolve, reject) {
+            try {
+                let files;
+                if(fileUtils.fileExists(resourceDir)) {
+                    files = fs.readdirSync(resourceDir);
+                    files = _.uniqBy(files, function (f) {
+                        return path.basename(f, '.' + rc.tools.spec.file_ext);
+                    }).map(function(f) { return path.join(resourceDir, f);});
+                }
+                if(!files) files = [];
+                resolve(files);
+            } catch (err) {
+                reject(err);
+            }
+        }).then(function(files) {
+            return promiseUtils.chain(rc.tools.inspect, function(err) {
+                console.error(err);
+                return false;
+            })(files);
+        });
+    }","Returns a list of resource containers that have been downloaded
+@returns {Promise.<[{}]>} an array of resource container info objects (package.json).",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L1160-L1181
+"function(local, available) {
+        let updates = [];
+        for(let a of available) {
+            try {
+                if (a.modified_at > local[a.slug]
+                    || (a.modified_at == 0 && local[a.slug] == 0)) updates.push(a.slug);
+            } catch(err) {
+                console.error(err);
+            }
+        }
+        return Promise.resolve(updates);
+    }","Prepares a list of items that are eligible for updates.
+Note: This is different than what's available for download. Everything in the index is technically available for download.
+
+Eligibility is determined by:
+* available items who's modified_at exceeds the local equivalent
+* available items who's modified_at is 0 and accompanying local item's modified_at is 0
+
+@param local {{}} keyed object of local (downloaded) items.
+@param available {[{slug, modified_at}]} an array of available (indexed) items
+@returns {Promise.<Array>}",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L1195-L1206
+"function() {
+        return new Promise(function(resolve, reject) {
+            try{
+                resolve(library.listSourceLanguagesLastModified());
+            } catch (err) {
+                reject(err);
+            }
+        }).then(function(languages) {
+            return listResourceContainers()
+                .then(function(results) {
+                    // flatten modified_at
+                    let local = {};
+                    for(let info of results) {
+                        try {
+                            if(!local[info.language.slug]) local[info.language.slug] = -1;
+                            let old = local[info.language.slug];
+                            local[info.language.slug] = info.modified_at > old ? info.modified_at : old;
+                        } catch (err) {
+                            console.error(err);
+                        }
+                    }
+                    return inferUpdates(local, languages);
+                });
+        });
+    }","Returns a list of source languages that are eligible for updates.
+
+@returns {Promise.<Array>} An array of slugs",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L1213-L1237
+"function(languageSlug) {
+       return new Promise(function(resolve, reject) {
+            try{
+                resolve(library.listProjectsLastModified(languageSlug));
+            } catch (err) {
+                reject(err);
+            }
+        }).then(function(projects) {
+            return listResourceContainers()
+                .then(function(results) {
+                    // flatten modified_at
+                    let local = {};
+                    for(let info of results) {
+                        try {
+                            if(languageSlug && info.language.slug !== languageSlug) continue;
+                            if(!local[info.project.slug]) local[info.project.slug] = -1;
+                            let old = local[info.project.slug];
+                            local[info.project.slug] = info.modified_at > old ? info.modified_at : old;
+                        } catch (err) {
+                            console.error(err);
+                        }
+                    }
+                    return inferUpdates(local, projects);
+                });
+        });
+    }","Returns a list of projects that are eligible for updates.
+If no language is given the results will include all projects in all languages. This is helpful if you need to view updates based on project first rather than source language first.
+
+@param languageSlug {string|null} the slug of a source language who's projects will be checked.
+@returns {Promise.<Array>} An array of slugs",https://github.com/unfoldingWord-dev/node-door43-client/blob/18f518368ee89f4baf8943500a1c53ef5efcfb3e/lib/main.js#L1246-L1271
+"function LOCK(value, isGetSet = false) {
+		let dprop = HIDDEN(value, isGetSet);
+		// ----------------------------------------------------------
+		return Assign(dprop, { enumerable: true });
+	}","/////////////////////////////////////////////////////////////////////////////////////////// FUNCTIONS 
+Creates a `Property Descriptor` that prevents the **editing** & **configuring** of a `Class` Property
+
+@param   {any}      value The Property value
+@param   {Boolean} [isGetSet=false] `true`, if the Property if a `getter`/`setter`
+@returns {PropDesc} The `Property Descriptor`
+@private",https://github.com/DFFR-NT/dffrnt.confs/blob/2175e20c0ed3405e8956dd9b59cd71e79bef6d16/lib/utils.js#L251-L255
+"function FREEZE(obj, all = false) {
+		if (UoN(obj)) return obj;
+		// ----------------------------------------------------------
+		let iss = ISS(obj), iEN = OoA.has(iss), dfl, res;
+		// ----------------------------------------------------------
+			if (!iEN||iss=='function') return obj;
+			if (!!obj.toJS) obj = obj.toJS();
+			if (ISCONFIG(obj)||ISPTYPE(obj)) return obj;
+		// ----------------------------------------------------------
+			dfl = [{},[]][-(-(iss==OoA[1]))];
+			res = Assign(dfl, obj);
+		// ----------------------------------------------------------
+			if (!!all) res = FromJS(res).map((v)=>(
+				FREEZE(v, all)
+			)).toJS();
+		// ----------------------------------------------------------
+			return Object.freeze(res);
+	}","Freeze an Object, if needed.
+
+@param {*} obj The Object to Freeze
+@param {Boolean} [all=false] `true`, if Freezing should be recursive
+@returns {Object} The frozen Object
+@private",https://github.com/DFFR-NT/dffrnt.confs/blob/2175e20c0ed3405e8956dd9b59cd71e79bef6d16/lib/utils.js#L265-L282
+"function IDPTYPE() {
+		let make = ()=>(Math.random().toString(36).slice(2)), rslt = make();
+		while (global.__PTYPES__.has(rslt)) { rslt = make(); }
+		return rslt;
+	}","Creates a unique ID for `PTypes`
+
+@returns {string} A unique identifier
+@private",https://github.com/DFFR-NT/dffrnt.confs/blob/2175e20c0ed3405e8956dd9b59cd71e79bef6d16/lib/utils.js#L312-L316
+"function GETCONFIG(name) {
+		return {
+			GNConfig:	GNConfig,
+			RouteGN:	RouteGN,
+			RouteAU:	RouteAU,
+			RouteDB:	RouteDB,
+			GNHeaders:	GNHeaders,
+			GNParam:	GNParam,
+			GNDescr:	GNDescr,
+		}[name];
+	}","Grabs a Config-Type Class
+
+@param {string} name The name of the Config-Type Class
+@returns {GNConfig|RouteGN|RouteAU|RouteDB|GNHeaders|GNParam|GNDescr}
+@private",https://github.com/DFFR-NT/dffrnt.confs/blob/2175e20c0ed3405e8956dd9b59cd71e79bef6d16/lib/utils.js#L325-L335
+"function MERGER(oldVal, newVal) {
+		let onme = CNAME(oldVal), ocon = ISCONFIG(oldVal), otyp = ISPTYPE(oldVal),
+			nnme = CNAME(newVal), ncon = ISCONFIG(newVal), ntyp = ISPTYPE(newVal);
+		if (otyp || ntyp) { return newVal; };
+		if (ocon && ncon && onme==nnme) {
+			return new GETCONFIG(onme)(Assign(oldVal, newVal));
+		};
+		if (ocon && onme=='GNParam') {
+			if (nnme=='array') return oldVal.AddVersion(newVal[0],     newVal[1]);
+			if (nnme=='List' ) return oldVal.AddVersion(newVal.get(0), newVal.get(1).toJS());
+		};
+		return newVal;
+	}","A `callback` used in `Immutable`.`mergeWith`
+
+@param {*} oldVal The value of the original Object
+@param {*} newVal The value of the merging Object
+@returns {*}",https://github.com/DFFR-NT/dffrnt.confs/blob/2175e20c0ed3405e8956dd9b59cd71e79bef6d16/lib/utils.js#L344-L356
+"function AddProperty(name, value, type, required = true, noBind = false) {
+		let THS = this, bindable = (v)=>(!!!noBind&&!!v&&!!v.bind&&!ISPTYPE(v)); 
+		if (value===undefined) { if (!!required) {
+			THS.ThrowType(name, type, value, 'undefined'); 
+		};	return; }
+		THS.CheckTypes(name, value, type, required);
+		if (bindable(value)) value = value.bind(THS);
+		DEFINE(THS, { [name]: LOCK(FREEZE(value)) });
+	}","**Checks** and then **Adds** the Property to this `Object`
+
+@param {String} name name The `name` of the Property
+@param {*} value value The Property `value`
+@param {String} type type The `type` the Property should be
+@param {Boolean} [required=true] `true`, if Property **must** be defined
+@param {Boolean} [noBind=true] if `true`, Property will **NOT** be bound to `this`
+@private",https://github.com/DFFR-NT/dffrnt.confs/blob/2175e20c0ed3405e8956dd9b59cd71e79bef6d16/lib/utils.js#L368-L376
+"function CheckTypes(name, value, type, required = true) {
+		let THS = this, iss; 
+		if (!!type) {
+			if (ISS(type)=='string') type = [type];
+			if (!!required || !UoN(value)) {
+				iss = ISS(value);
+				if (!type.has(iss)) {
+					THS.ThrowType(name, type, value, iss);
+				}
+			}
+		}
+	}","**Checks** the Property against a _specified_ `type`
+
+@param {String} name The `name` of the Property
+@param {*} value The Property `value`
+@param {String} type The `type` the Property should be
+@param {Boolean} [required=true] `true`, if Property **must** be defined
+@private",https://github.com/DFFR-NT/dffrnt.confs/blob/2175e20c0ed3405e8956dd9b59cd71e79bef6d16/lib/utils.js#L387-L398
+"function ThrowType(name, type, value, actual) {
+		console.log('THIS:', this)
+		let THS = this, pfx = (!!THS ? THS.Name||THS.Scheme : '');
+		throw new TypeError(
+			`${pfx} property, [${name}], must be one of the following, <${
+				type.join('> or <').toTitleCase()
+			}>. Got <${actual.toTitleCase()}> (${value}) instead.`
+		);
+	}","Throws a `TypeError` when a `type` requirement is not met
+
+@param {String} name The `name` of the Property
+@param {String} type The `type` the Property should have been
+@param {any}    value The failed `value`
+@param {String} actual The `type` the Value actual is
+@private",https://github.com/DFFR-NT/dffrnt.confs/blob/2175e20c0ed3405e8956dd9b59cd71e79bef6d16/lib/utils.js#L409-L417
+"function FormatQRY(query) { 
+						var R = '', Q = query; switch(true) {
+							case THS.QisFunction: return CleanQRY(Q.toString());
+							case THS.QisArray: return Q.join(""\n"").replace(""\t"","""");
+							default: return R;
+						};
+					}",--------------------------------------------------------------------------------- //,https://github.com/DFFR-NT/dffrnt.confs/blob/2175e20c0ed3405e8956dd9b59cd71e79bef6d16/lib/utils.js#L592-L598
+"function Hydrate(text) {
+						let rgx = /<<([A-Z]+)>>/g;
+						return text.replace(rgx, ($0, $1)=>{
+							let prop = $1.toLowerCase();
+							return THS.hasOwnProperty(prop) ?
+								THS[prop] : $0
+						});
+					}",Functions ---------------------------------------------------------,https://github.com/DFFR-NT/dffrnt.confs/blob/2175e20c0ed3405e8956dd9b59cd71e79bef6d16/lib/utils.js#L814-L821
+"function Exam(main, ...examples) {
+						let pfx = ' > > > ', sep = '\n    ',
+							fmt = (v)=>(`${jsn(v)}${pfx}${jsn(san(v))}`),
+							san = (v)=>(main.sanitize(v)),
+							jsn = (v)=>(JSON.stringify(v)); 
+						return `\n${main.name}: ${[JSN.Normal(
+							main.toDoc())].concat(examples.map(
+								fmt)).join(sep)}\n`;
+					}",------------------------------------------------------------------------------------ //,https://github.com/DFFR-NT/dffrnt.confs/blob/2175e20c0ed3405e8956dd9b59cd71e79bef6d16/lib/utils.js#L1327-L1335
+"function descriptor(obj) {
+  if (!obj || 'object' !== typeof obj || Array.isArray(obj)) return false;
+
+  var keys = Object.keys(obj);
+
+  //
+  // A descriptor can only be a data or accessor descriptor, never both.
+  // An data descriptor can only specify:
+  //
+  // - configurable
+  // - enumerable
+  // - (optional) value
+  // - (optional) writable
+  //
+  // And an accessor descriptor can only specify;
+  //
+  // - configurable
+  // - enumerable
+  // - (optional) get
+  // - (optional) set
+  //
+  if (
+       ('value' in obj || 'writable' in obj)
+    && ('function' === typeof obj.set || 'function' === typeof obj.get)
+  ) return false;
+
+  return !!keys.length && keys.every(function allowed(key) {
+    var type = description[key]
+      , valid = type === undefined || is(obj[key], type);
+
+    return key in description && valid;
+  });
+}","Check if a given object is valid as an descriptor.
+
+@param {Object} obj The object with a possible description.
+@returns {Boolean}
+@api public",https://github.com/bigpipe/predefine/blob/238137e3d1b8288ff5d7529c3cbcdd371888c26b/index.js#L28-L60
+"function predefine(obj, pattern) {
+  pattern = pattern || predefine.READABLE;
+
+  return function predefined(method, description, clean) {
+    //
+    // If we are given a description compatible Object, use that instead of
+    // setting it as value. This allows easy creation of getters and setters.
+    //
+    if (
+         !predefine.descriptor(description)
+      || is(description, 'object')
+         && !clean
+         && !predefine.descriptor(predefine.mixin({}, pattern, description))
+    ) { description = {
+        value: description
+      };
+    }
+
+    //
+    // Prevent thrown errors when we attempt to override a readonly
+    // property
+    //
+    var described = Object.getOwnPropertyDescriptor(obj, method);
+    if (described && !described.configurable) {
+      return predefined;
+    }
+
+    Object.defineProperty(obj, method, !clean
+      ? predefine.mixin({}, pattern, description)
+      : description
+    );
+
+    return predefined;
+  };
+}","Predefine, preconfigure an Object.defineProperty.
+
+@param {Object} obj The context, prototype or object we define on.
+@param {Object} pattern The default description.
+@param {Boolean} override Override the pattern.
+@returns {Function} The function definition.
+@api public",https://github.com/bigpipe/predefine/blob/238137e3d1b8288ff5d7529c3cbcdd371888c26b/index.js#L83-L117
+"function lazy(obj, prop, fn) {
+  Object.defineProperty(obj, prop, {
+    configurable: true,
+
+    get: function get() {
+      return Object.defineProperty(this, prop, {
+        value: fn.call(this)
+      })[prop];
+    },
+
+    set: function set(value) {
+      return Object.defineProperty(this, prop, {
+        value: value
+      })[prop];
+    }
+  });
+}","Lazy initialization pattern.
+
+@param {Object} obj The object where we need to add lazy loading prop.
+@param {String} prop The name of the property that should lazy load.
+@param {Function} fn The function that returns the lazy laoded value.
+@api public",https://github.com/bigpipe/predefine/blob/238137e3d1b8288ff5d7529c3cbcdd371888c26b/index.js#L127-L143
+"function remove(obj, keep) {
+  if (!obj) return false;
+  keep = keep || [];
+
+  for (var prop in obj) {
+    if (has.call(obj, prop) && !~keep.indexOf(prop)) {
+      delete obj[prop];
+    }
+  }
+
+  return true;
+}","Remove all enumerable properties from an given object.
+
+@param {Object} obj The object that needs cleaning.
+@param {Array} keep Properties that should be kept.
+@api public",https://github.com/bigpipe/predefine/blob/238137e3d1b8288ff5d7529c3cbcdd371888c26b/index.js#L162-L173
+"function create(property, description, pattern) {
+  pattern = pattern || {};
+
+  if (!predefine.descriptor(description)) description = {
+    enumberable: false,
+    value: description
+  };
+
+  var definition = {};
+  definition[property] = predefine.mixin(pattern, description);
+
+  return definition;
+}","Create a description that can be used for Object.create(null, definition) or
+Object.defineProperties.
+
+@param {String} property The name of the property we are going to define.
+@param {Object} description The object's description.
+@param {Object} pattern Optional pattern that needs to be merged in.
+@returns {Object} A object compatible with Object.create & defineProperties.",https://github.com/bigpipe/predefine/blob/238137e3d1b8288ff5d7529c3cbcdd371888c26b/index.js#L184-L196
+"function mixin(target) {
+  Array.prototype.slice.call(arguments, 1).forEach(function forEach(o) {
+    Object.getOwnPropertyNames(o).forEach(function eachAttr(attr) {
+      Object.defineProperty(target, attr, Object.getOwnPropertyDescriptor(o, attr));
+    });
+  });
+
+  return target;
+}","Mix multiple objects in to one single object that contains the properties of
+all given objects. This assumes objects that are not nested deeply and it
+correctly transfers objects that were created using `Object.defineProperty`.
+
+@returns {Object} target
+@api public",https://github.com/bigpipe/predefine/blob/238137e3d1b8288ff5d7529c3cbcdd371888c26b/index.js#L206-L214
+"function each(collection, iterator, context) {
+  if (arguments.length === 1) {
+    iterator = collection;
+    collection = this;
+  }
+
+  var isArray = Array.isArray(collection || this)
+    , length = collection.length
+    , i = 0
+    , value;
+
+  if (context) {
+    if (isArray) {
+      for (; i < length; i++) {
+        value = iterator.apply(collection[ i ], context);
+        if (value === false) break;
+      }
+    } else {
+      for (i in collection) {
+        value = iterator.apply(collection[ i ], context);
+        if (value === false) break;
+      }
+    }
+  } else {
+    if (isArray) {
+      for (; i < length; i++) {
+        value = iterator.call(collection[i], i, collection[i]);
+        if (value === false) break;
+      }
+    } else {
+      for (i in collection) {
+        value = iterator.call(collection[i], i, collection[i]);
+        if (value === false) break;
+      }
+    }
+  }
+
+  return this;
+}","Iterate over a collection. When you return false, it will stop the iteration.
+
+@param {Mixed} collection Either an Array or Object.
+@param {Function} iterator Function to be called for each item.
+@param {Mixed} context The context for the iterator.
+@api public",https://github.com/bigpipe/predefine/blob/238137e3d1b8288ff5d7529c3cbcdd371888c26b/index.js#L223-L261
+"function init (file) {
+  if (!postcssify.entry) {
+    if (dest) {
+      log.info('output: %s', dest)
+      process.on('beforeExit', () => {
+        if (!postcssify.complete) {
+          postcssify.complete = true
+          bundle()
+        }
+      })
+      postcssify.entry = file
+    } else {
+      return
+    }
+  }
+  return true
+}",init => returns false if no dest is defined,https://github.com/vigour-io/postcssify/blob/f7b1c7fc31bba4d0bc9c59eba0caf6eccabc1a66/lib/index.js#L68-L84
+"function jstransform (file) {
+  let commentblock
+  var requires = []
+  const stream = through()
+  readline.createInterface({
+    input: stream
+  }).on('line', (line) => {
+    if (relevant(line)) {
+      if (!commentblock) {
+        if (commentstart(line)) {
+          if (!commentend(line)) {
+            commentblock = true
+          }
+        } else if (hasrequire(line)) {
+          var req
+          while(req = required(line)) {
+            if (!isBuiltinModule(req.uri)) {
+              requires.push(req)
+            }
+          }
+        }
+      } else if (commentend(line)) {
+        commentblock = false
+      }
+    }
+  }).on('close', () => collect(requires, file))
+  return stream
+}",js transform,https://github.com/vigour-io/postcssify/blob/f7b1c7fc31bba4d0bc9c59eba0caf6eccabc1a66/lib/index.js#L87-L114
+"function csstransform (file) {
+  const realPath = realpath(file)
+  let commentblock, collected, secondpass
+  var imports = []
+  let cssbody = ''
+  const readable = readstream()
+  const reader = readline.createInterface({
+    input: readable
+  }).on('line', (line) => {
+    if (!collected && relevant(line)) {
+      if (!commentblock) {
+        if (commentstart(line)) {
+          if (!commentend(line)) {
+            commentblock = true
+          }
+        } else if (hasimport(line)) {
+          const importfile = imported(line)
+          if (!hasurl(importfile)) {
+            return imports.push({uri: importfile, isSet: !!cssObjExport[realPath]})
+          }
+        } else {
+          collect(imports, file, true)
+          collected = true
+        }
+      } else if (commentend(line)) {
+        commentblock = false
+      }
+    }
+    cssbody += line + '\n'
+  })
+  return through(function (buf, enc, next) {
+    if (secondpass || (secondpass = isparsed(buf))) {
+      this.push(buf)
+    } else {
+      readable.push(buf)
+    }
+    next()
+  }, function (flush) {
+    if (secondpass) {
+      flush()
+    } else {
+      reader.on('close', () => {
+        styles[realPath] = postcss.parse(cssbody, { from: realPath })
+        if (!collected) {
+          collect(imports, file, true)
+        }
+
+        if (cssObjExport[realPath]) {
+          getCssVars(styles[realPath]).then(cssVars => {
+            this.push(
+              [
+                ignoremark,
+                'var base = require(\'brisky-base\')({})',
+              ]
+                .concat(imports.map(f => `base.set(require('${f.uri}').serialize())`))
+                .concat(`base.set(${JSON.stringify(cssVars, null, 2)})`)
+                .concat('module.exports = base')
+                .join('\n') + '\n'
+            )
+            flush()
+          })
+        } else {
+          this.push([ignoremark].concat(imports.map(f => `require('${f.uri}')`)).join('\n') + '\n')
+          flush()
+        }
+      })
+      readable.push(null)
+    }
+  })
+}",css transform,https://github.com/vigour-io/postcssify/blob/f7b1c7fc31bba4d0bc9c59eba0caf6eccabc1a66/lib/index.js#L117-L186
+"function collect (files, file, rebundle) {
+  if (files.length) {
+    file = realpath(file)
+    Promise.all(files.filter(f => css(f.uri)).map(f => resolveReal(f, file)))
+      .then(files => {
+        files.forEach(f => {
+          if (f.isSet) {
+            cssObjExport[f.uri] = true
+          }
+        })
+      })
+      .catch(error => {
+        console.error(error)
+      })
+
+    if (collectTimer[file]) { clearTimeout(collectTimer[file]) }
+    collectTimer[file] = setTimeout(() => {
+      preparedep(file)
+      Promise.all(files.map(f => resolveReal(f, file)))
+        .then(files => {
+          files.forEach(f => {
+            if (!deps[f.uri]) {
+              deps[f.uri] = {}
+            }
+
+            deps[file][f.uri] = deps[f.uri]
+            debouncebundle(100)
+          })
+        })
+    }, 100)
+  } else if (rebundle) {
+    debouncebundle(200)
+  }
+}",collect requires/imports,https://github.com/vigour-io/postcssify/blob/f7b1c7fc31bba4d0bc9c59eba0caf6eccabc1a66/lib/index.js#L246-L279
+"function debouncebundle (time) {
+  let timer = postcssify.timer
+  if (timer) { clearTimeout(timer) }
+  postcssify.timer = setTimeout(() => {
+    postcssify.timer = null
+    bundle()
+  }, time)
+}",throttled bundle,https://github.com/vigour-io/postcssify/blob/f7b1c7fc31bba4d0bc9c59eba0caf6eccabc1a66/lib/index.js#L291-L298
+"function bundle () {
+  const ordered = order(deps[postcssify.entry], [], {})
+  const l = ordered.length
+  let ast
+  for (let i = 0; i < l; i++) {
+    const file = ordered[i]
+    const style = styles[file]
+    if (style === void 0) {
+      return
+    } else {
+      if (!ast) {
+        ast = style.clone()
+      } else {
+        ast.append(style)
+      }
+    }
+  }
+  if (ast) {
+    postcss(processors).process(ast.toResult(), { to: dest, map: true }).then((result) => {
+      fs.writeFile(dest, result.css, (err) => {
+        if (err) {
+          throw err
+        } else {
+          log.info('updated: %s', dest)
+        }
+      })
+    }).catch((err) => log.error(err))
+  }
+}",concat and bundle css,https://github.com/vigour-io/postcssify/blob/f7b1c7fc31bba4d0bc9c59eba0caf6eccabc1a66/lib/index.js#L301-L329
+"function order (d, arr, visited) {
+  for (let i in d) {
+    if (!visited[i]) {
+      let obj = d[i]
+      visited[i] = true
+      arr = arr.concat(order(obj, [], visited))
+      if (css(i)) {
+        arr.push(i)
+      }
+    }
+  }
+  return arr
+}",walk deps and return ordered array,https://github.com/vigour-io/postcssify/blob/f7b1c7fc31bba4d0bc9c59eba0caf6eccabc1a66/lib/index.js#L352-L364
+"function pad(str, length, char) {
+	return new BespokeString(str).pad(length, char).toString()
+}","Helper method for padding a string.
+@param  {String} str    The string to pad.
+@param  {Number} length Target length.
+@param  {String} char   Character to use for pad.
+@return {String} The padded string.",https://github.com/MarkGriffiths/string/blob/699a4404d53501c719c34e649a34376a66ff8c62/src/index.js#L133-L135
+"function() {
+      return new Promise((resolve) => {
+        log.debug(`Destroy called on queue ${this.name} - ${connection.name} (${this.channel.getMessageCount()} messages pending)`);
+        this.on('destroyed', () => {
+          this.subscriptions = [];
+          resolve();
+        }).once();
+        this.handle('destroy');
+      });
+    }","Destroy the queue
+
+@public
+@memberOf QueueMachine.prototype
+@returns {Promise} a promise that is fulfilled when destruction is complete",https://github.com/LeisureLink/magicbus/blob/0370c38ebb8c7917cfd3894263d734aefc2d3d29/lib/queue-machine.js#L65-L74
+"function(callback, options) {
+      return new Promise((resolve, reject) => {
+        let op = () => {
+          return this.channel.subscribe(callback, options)
+            .then(resolve, reject);
+        };
+        this.on('failed', function(err) {
+          reject(err);
+        }).once();
+        this.handle('subscribe', op);
+      });
+    }","Subscribe to the queue
+
+@public
+@memberOf QueueMachine.prototype
+@param {Function} callback - the function to be called with each message
+@param {Object} options - details in consuming from the queue
+@param {Number} options.limit - the channel prefetch limit
+@param {bool} options.noBatch - if true, ack/nack/reject operations will execute immediately and not be batched
+@param {bool} options.noAck - if true, the broker won't expect an acknowledgement of messages delivered to this consumer; i.e., it will dequeue messages as soon as they've been sent down the wire. Defaults to false (i.e., you will be expected to acknowledge messages).
+@param {String} options.consumerTag - a name which the server will use to distinguish message deliveries for the consumer; mustn't be already in use on the channel. It's usually easier to omit this, in which case the server will create a random name and supply it in the reply.
+@param {bool} options.exclusive - if true, the broker won't let anyone else consume from this queue; if there already is a consumer, there goes your channel (so usually only useful if you've made a 'private' queue by letting the server choose its name).
+@param {Number} options.priority - gives a priority to the consumer; higher priority consumers get messages in preference to lower priority consumers. See this RabbitMQ extension's documentation
+@param {Object} options.arguments -  arbitrary arguments. Go to town.
+@returns {Promise} a promise that is fulfilled when the subscription is active",https://github.com/LeisureLink/magicbus/blob/0370c38ebb8c7917cfd3894263d734aefc2d3d29/lib/queue-machine.js#L92-L103
+"function() {
+      if (this.subscriptions.length) {
+        return Promise.map(this.subscriptions, (op) => {
+          return op();
+        })
+        .then(() => {
+          log.info(`Restarted ${this.subscriptions.length} subscriptions`);
+        });
+      }
+      return Promise.resolve();
+    }",Restarts any subscriptions (called upon reconnect),https://github.com/LeisureLink/magicbus/blob/0370c38ebb8c7917cfd3894263d734aefc2d3d29/lib/queue-machine.js#L121-L131
+"function nextSeparator( str , runtime ) {
+	var i = runtime.i ,
+		eol = runtime.iEndOfLine ;
+
+	for ( ; i < eol ; i ++ ) {
+
+		switch ( str.charCodeAt( i ) ) {
+			case 0x20 :	//     space
+			case 0x28 :	// (   open parenthesis
+			case 0x29 :	// )   close parenthesis
+			case 0x2c :	// ,   comma
+			case 0x3a :	// :   colon
+			case 0x22 :	// ""   double-quote
+			case 0x24 :	// $   dollar
+			case 0x5b :	// [   open bracket
+			case 0x5d :	// ]   close bracket
+			case 0x7b :	// {   open curly brace
+			case 0x7d :	// }   close curly brace
+				return i ;
+		}
+	}
+
+	// return i/eol
+	return i ;
+}","Find the next separator: space, parens, comma, colon, double-quote, dollar, brackets",https://github.com/cronvel/kung-fig-expression/blob/b9aae3aa2e3a5fdfc13fb6c76794526764485c5b/lib/Expression.js#L639-L663
