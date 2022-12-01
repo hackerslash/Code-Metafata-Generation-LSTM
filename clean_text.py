@@ -45,3 +45,23 @@ nlp = spacy.load('en', disable=['ner', 'parser'])
 code = [str(doc) for doc in nlp.pipe(processed_code, batch_size=50)]
 #_START_ and _END_ tokens are markers to understand start and end of summaries
 summary = [ str(doc) for doc in nlp.pipe(processed_summary, batch_size=50)]
+
+
+max_code_len = 100
+max_summary_len =25
+# Extract the codes and summaries within the maximum length
+import numpy as np
+cleaned_code = np.array(df_code_p['code'])
+cleaned_summary= np.array(df_code_p['docstring'])
+short_text = []
+short_summary = []
+for i in range(len(cleaned_code)):
+if len(cleaned_summary[i].split()) <= max_summary_len and len(cleaned_code[i].split()) <= max_code_len:
+short_text.append(cleaned_code[i])
+short_summary.append(cleaned_summary[i])
+post_code = pd.DataFrame({'code': short_text,'summary': short_summary})
+post_code.head(100)
+#apply start and end markers
+post_code['summary'] = post_code['summary'].apply(lambda x: 'sostok ' + x \
++ ' eostok')
+post_code.head(2)
